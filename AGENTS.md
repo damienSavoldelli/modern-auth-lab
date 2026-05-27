@@ -92,6 +92,7 @@ Use repository scripts before calling tools directly.
 Backend commands:
 
 - Install PHP dependencies: `composer install`
+- Start backend dev server: `composer serve`
 - Run backend tests: `composer test`
 - Run backend coverage: `composer test:coverage`
 - Run backend static analysis: `composer analyse`

@@ -27,6 +27,7 @@
     "analyse": "phpstan analyse",
     "cs:check": "php-cs-fixer fix --dry-run --diff --verbose",
     "cs:fix": "php-cs-fixer fix --verbose",
+    "serve": "php -S 127.0.0.1:8080 -t public",
     "test": "phpunit",
     "test:coverage": "phpunit --coverage-text"
   },

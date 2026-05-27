@@ -34,7 +34,7 @@ src/
 tests/
 ```
 
-This structure is not created until the first backend milestone needs it.
+The first backend milestone introduces `public/` as the only intended web root and starts with minimal HTTP primitives under `src/Http/`.
 
 ## Initial Frontend Shape
 
