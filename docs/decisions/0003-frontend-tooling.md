@@ -32,5 +32,5 @@ Frontend code can improve UX but must not be trusted for authentication, authori
 ## Rejected Alternatives
 
 - React, Vue, or another SPA framework at the beginning: rejected because auth architecture is the learning focus.
-- Tailwind CSS at the beginning: rejected because native CSS is enough for the initial pedagogical UI.
+- Tailwind CSS at the beginning: rejected because native CSS is enough for the initial UI foundation.
 - TypeScript in v1.0: rejected because the roadmap intentionally teaches vanilla JavaScript before migration.

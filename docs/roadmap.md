@@ -1,12 +1,12 @@
 # Roadmap
 
-Modern Auth Lab is a progressive educational project for learning modern web authentication, MFA, Passkeys/WebAuthn, secure fallback design, testing strategy, mutation testing, and CI/CD.
+Modern Auth Lab is a progressive project for exploring modern web authentication, MFA, Passkeys/WebAuthn, secure fallback design, testing strategy, mutation testing, and CI/CD.
 
 The project evolves through explicit versions. Each version must remain understandable, testable, and reviewable.
 
 ## Versioning Model
 
-- `main` represents the most recent educational version.
+- `main` represents the most recent project version.
 - Stable learning milestones are preserved with Git tags and GitHub releases.
 - Early milestones may use `v0.x` tags before the full `v1.0` scope is complete.
 - Release notes should explain both delivered behavior and security decisions.

@@ -1,6 +1,6 @@
 # Modern Auth Lab
 
-Modern Auth Lab is a progressive educational security project for learning modern web authentication with PHP, vanilla JavaScript, TOTP, Passkeys/WebAuthn, controlled MFA fallback strategies, tests, coverage, mutation testing, and CI/CD.
+Modern Auth Lab is a progressive security project for exploring modern web authentication with PHP, vanilla JavaScript, TOTP, Passkeys/WebAuthn, controlled MFA fallback strategies, tests, coverage, mutation testing, and CI/CD.
 
 The project is intentionally built step by step. It starts with a small framework-free foundation before adding authentication behavior.
 
@@ -119,4 +119,4 @@ Start with:
 
 ## Versioning
 
-`main` represents the latest educational version. Stable milestones are preserved with Git tags and GitHub releases.
+`main` represents the latest project version. Stable milestones are preserved with Git tags and GitHub releases.

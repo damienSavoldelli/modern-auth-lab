@@ -2,7 +2,16 @@
 
 All notable changes to Modern Auth Lab will be documented in this file.
 
-The format follows Keep a Changelog conventions, and this project uses semantic versioning for educational milestones.
+The format follows Keep a Changelog conventions, and this project uses semantic versioning for project milestones.
+
+## [0.1.1] - 2026-05-28
+
+### Changed
+
+- Added the default Delivery Workflow for roadmap work.
+- Added the release notes format for future releases.
+- Documented the historical release notes format used by `v0.1.0`.
+- Replaced project-facing `educational` wording with more professional milestone language.
 
 ## [0.1.0] - 2026-05-28
 
@@ -43,4 +52,5 @@ The format follows Keep a Changelog conventions, and this project uses semantic 
 - SQLite/libSQL persistence.
 - CI/CD.
 
+[0.1.1]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.1.1
 [0.1.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.1.0

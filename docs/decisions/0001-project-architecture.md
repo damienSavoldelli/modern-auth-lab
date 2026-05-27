@@ -2,7 +2,7 @@
 
 ## Context
 
-Modern Auth Lab is an educational security project. It must demonstrate modern authentication flows without hiding core concepts behind a full-stack framework at the beginning.
+Modern Auth Lab is a progressive security project. It must demonstrate modern authentication flows without hiding core concepts behind a full-stack framework at the beginning.
 
 The project needs enough structure to remain maintainable while avoiding premature abstraction.
 
@@ -22,7 +22,7 @@ Security-sensitive decisions remain server-side. Frontend code can improve UX bu
 
 ## Consequences
 
-- The project remains readable and pedagogical.
+- The project remains readable, progressive, and maintainable.
 - Authentication states can be modeled explicitly.
 - Tests can target domain and application behavior without requiring a large framework.
 - More wiring code may be needed than in a framework.

@@ -1,6 +1,6 @@
 # Agent Guidelines
 
-This repository is a progressive educational security lab focused on modern web authentication with PHP, SQLite/libSQL, vanilla JavaScript, WebAuthn/Passkeys, TOTP, testing, coverage, mutation testing, and CI/CD.
+This repository is a progressive security lab focused on modern web authentication with PHP, SQLite/libSQL, vanilla JavaScript, WebAuthn/Passkeys, TOTP, testing, coverage, mutation testing, and CI/CD.
 
 The agent must work incrementally. Each step should be understandable, reviewable, and aligned with the current project stage.
 
@@ -21,7 +21,7 @@ Security-sensitive correctness includes authentication state, authorization, inp
 
 - Keep architecture and business logic clearly separated.
 - Prefer explicit, readable code over clever abstractions.
-- Preserve a professional but pedagogical structure.
+- Preserve a professional, progressive, and maintainable structure.
 - Introduce complexity only when it solves a real current problem.
 - Explain important security and architecture decisions before or with implementation.
 - Generate only the code required for the current validated step.
@@ -84,6 +84,72 @@ The agent is not responsible for:
 - Run relevant tests or checks when available.
 - Report checks that could not be run.
 - Do not continue to a new roadmap phase without explicit validation.
+- For roadmap work, follow the Delivery Workflow before editing files.
+
+## Delivery Workflow
+
+Default delivery flow for roadmap work:
+
+1. Create a feature branch from up-to-date `main` before starting a new roadmap step.
+2. Use focused branch names such as `feature/session-foundation`, `feature/sqlite-foundation`, or `docs/update-roadmap`.
+3. Implement the smallest coherent change for the current step.
+4. Add or update tests when behavior changes.
+5. Run the relevant backend and frontend checks.
+6. Commit with a clear conventional message.
+7. Push the branch when requested.
+8. Open a Pull Request when CI/review workflow is available or when the user asks for it.
+9. CI must pass before merge once CI exists.
+10. Merge only after validation.
+11. Update `CHANGELOG.md` and release notes before tagging a release.
+12. Tag a version only for validated release milestones.
+
+Small exceptions:
+
+- Tiny documentation fixes may be committed directly to `main` when explicitly approved.
+- Emergency corrections may be committed directly to `main` when branching would add unnecessary overhead.
+- Never create or move release tags without explicit validation.
+
+## Release Notes Format
+
+When the user asks for release content, use the current release note format unless they explicitly request another structure.
+
+Release title format:
+
+```text
+vX.Y.Z - Short Milestone Title
+```
+
+Current release note format for future releases:
+
+```md
+## What changed
+
+## Why it matters
+
+## Notes
+
+## Stability Statement
+
+## Scope Clarification
+
+## Operational Guidance
+```
+
+Optional sections:
+
+- Include `Stability Statement` only when the release changes stability expectations, compatibility, runtime baseline, persistence, CI/CD, or security posture.
+- Include `Scope Clarification` only when it helps distinguish delivered scope from deferred scope.
+- Include `Operational Guidance` only when users need commands, migration steps, setup instructions, or deployment guidance.
+
+Historical release note exception:
+
+- `v0.1.0` used the initial foundation format:
+  - short foundation release description
+  - `Added`
+  - `Verified`
+  - `Not Included Yet`
+  - `Notes`
+- Do not rewrite historical release notes unless explicitly requested.
 
 ## Project Commands
 
@@ -236,7 +302,7 @@ Frontend commands:
 - Keep the project lightweight.
 - Prefer mature, maintained packages for security-critical standards.
 - Explain why a dependency is needed before adding it.
-- Avoid dependencies that hide important educational concepts too early.
+- Avoid dependencies that hide important project concepts too early.
 
 ## Error Handling Rules
 
