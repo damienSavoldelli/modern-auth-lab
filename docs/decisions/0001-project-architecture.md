@@ -10,7 +10,7 @@ The project needs enough structure to remain maintainable while avoiding prematu
 
 Use a progressive vanilla architecture:
 
-- PHP 8.3+ backend.
+- PHP 8.5+ backend.
 - Composer and PSR-4 autoloading.
 - SQLite first, with libSQL compatibility considered later.
 - Explicit services, repositories, middleware, and HTTP handlers.

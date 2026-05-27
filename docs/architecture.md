@@ -4,7 +4,7 @@ The architecture starts as modern vanilla PHP with explicit boundaries. The goal
 
 ## Architectural Direction
 
-- PHP 8.3+ with strict typing.
+- PHP 8.5+ with strict typing.
 - Composer with PSR-4 autoloading.
 - SQLite first, with libSQL compatibility considered later.
 - Vanilla JavaScript ES modules through Vite.

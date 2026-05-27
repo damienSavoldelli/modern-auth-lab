@@ -27,6 +27,13 @@ Security-sensitive correctness includes authentication state, authorization, inp
 - Generate only the code required for the current validated step.
 - Wait for validation before moving to the next project stage.
 
+## Runtime Baseline
+
+- Backend code targets PHP 8.5+.
+- Do not lower the PHP baseline without an explicit decision record.
+- Prefer the latest stable actively supported PHP runtime for new backend code.
+- Tooling choices must remain compatible with the documented runtime baseline.
+
 ## Expected Agent Behavior
 
 The agent must:
@@ -77,6 +84,21 @@ The agent is not responsible for:
 - Run relevant tests or checks when available.
 - Report checks that could not be run.
 - Do not continue to a new roadmap phase without explicit validation.
+
+## Project Commands
+
+Use repository scripts before calling tools directly.
+
+Backend commands:
+
+- Install PHP dependencies: `composer install`
+- Run backend tests: `composer test`
+- Run backend coverage: `composer test:coverage`
+- Run backend static analysis: `composer analyse`
+- Check backend code style: `composer cs:check`
+- Fix backend code style: `composer cs:fix`
+
+Frontend commands are not defined yet.
 
 ## Architecture Rules
 

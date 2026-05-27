@@ -1,0 +1,38 @@
+{
+  "name": "modern-auth-lab/modern-auth-lab",
+  "description": "Educational modern authentication lab for TOTP, Passkeys/WebAuthn, and secure MFA fallback strategies.",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "php": "^8.5",
+    "ext-pdo": "*",
+    "ext-pdo_sqlite": "*"
+  },
+  "require-dev": {
+    "friendsofphp/php-cs-fixer": "^3.95",
+    "phpstan/phpstan": "^2.1",
+    "phpunit/phpunit": "^12.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "ModernAuthLab\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "ModernAuthLab\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "analyse": "phpstan analyse",
+    "cs:check": "php-cs-fixer fix --dry-run --diff --verbose",
+    "cs:fix": "php-cs-fixer fix --verbose",
+    "test": "phpunit",
+    "test:coverage": "phpunit --coverage-text"
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
