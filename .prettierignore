@@ -1,0 +1,9 @@
+README.md
+composer.lock
+package-lock.json
+vendor/
+node_modules/
+coverage/
+coverage-php/
+dist/
+.phpunit.cache/

@@ -44,6 +44,8 @@ The expected frontend shape will be introduced progressively:
 assets/
   js/
   css/
+tests/
+  frontend/
 ```
 
 TypeScript is intentionally deferred to v1.1.

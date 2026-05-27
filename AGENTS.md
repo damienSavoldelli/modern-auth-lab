@@ -98,7 +98,17 @@ Backend commands:
 - Check backend code style: `composer cs:check`
 - Fix backend code style: `composer cs:fix`
 
-Frontend commands are not defined yet.
+Frontend commands:
+
+- Install frontend dependencies: `npm install`
+- Start frontend dev server: `npm run dev`
+- Build frontend assets: `npm run build`
+- Run frontend tests: `npm test`
+- Run frontend tests in watch mode: `npm run test:watch`
+- Run frontend coverage: `npm run coverage`
+- Run frontend lint: `npm run lint`
+- Check frontend formatting: `npm run format`
+- Fix frontend formatting: `npm run format:fix`
 
 ## Architecture Rules
 
