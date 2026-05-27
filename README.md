@@ -16,11 +16,13 @@ Implemented foundation:
 - Vitest, V8 coverage, ESLint, and Prettier.
 - Minimal PHP HTTP foundation with `public/` as the web root.
 - `GET /health` diagnostic route.
+- Server-side session primitives and explicit authentication session states.
 
 Not implemented yet:
 
 - Password authentication.
-- Sessions and CSRF protection.
+- Login-backed authenticated sessions.
+- CSRF protection.
 - TOTP.
 - Passkeys/WebAuthn.
 - Trusted devices.

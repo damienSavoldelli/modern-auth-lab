@@ -151,6 +151,28 @@ Historical release note exception:
   - `Notes`
 - Do not rewrite historical release notes unless explicitly requested.
 
+## Pull Request Format
+
+When the user asks for Pull Request content, use this structure:
+
+```md
+## Scope
+
+## Why
+
+## Validation
+
+## Out of Scope
+```
+
+Use `Scope` for the concrete changes included in the branch.
+
+Use `Why` for the architectural, security, or workflow reason behind the change.
+
+Use `Validation` for commands run, checks passed, and any checks that could not be run.
+
+Use `Out of Scope` to clearly state what the branch intentionally does not implement.
+
 ## Project Commands
 
 Use repository scripts before calling tools directly.

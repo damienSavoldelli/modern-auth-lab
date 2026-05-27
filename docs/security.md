@@ -14,6 +14,7 @@ The project treats authentication as a sequence of explicit security states, not
 
 - Partial authentication is not full authentication.
 - Password verification, MFA challenge creation, MFA verification, fallback eligibility, and full authentication are separate states.
+- Session state must remain server-side and must distinguish partial authentication from full authentication.
 - Fallback TOTP is a controlled path, not a public bypass.
 - Server-side validation is required for all security-sensitive behavior.
 - Challenges must expire.
