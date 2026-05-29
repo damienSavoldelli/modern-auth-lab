@@ -17,12 +17,13 @@ Implemented foundation:
 - Minimal PHP HTTP foundation with `public/` as the web root.
 - `GET /health` diagnostic route.
 - Server-side session primitives and explicit authentication session states.
+- CSRF token primitives for future session-backed forms and unsafe requests.
 
 Not implemented yet:
 
 - Password authentication.
 - Login-backed authenticated sessions.
-- CSRF protection.
+- CSRF middleware and protected forms.
 - TOTP.
 - Passkeys/WebAuthn.
 - Trusted devices.
