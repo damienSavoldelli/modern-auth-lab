@@ -17,6 +17,7 @@ The project treats authentication as a sequence of explicit security states, not
 - Session state must remain server-side and must distinguish partial authentication from full authentication.
 - Fallback TOTP is a controlled path, not a public bypass.
 - Server-side validation is required for all security-sensitive behavior.
+- Unsafe session-backed requests must use CSRF protection before form-based authentication or account management actions are introduced.
 - Challenges must expire.
 - Sessions must rotate after privilege changes.
 - Security events must avoid secrets and raw tokens.
