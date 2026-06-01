@@ -4,6 +4,34 @@ All notable changes to Modern Auth Lab will be documented in this file.
 
 The format follows Keep a Changelog conventions, and this project uses semantic versioning for project milestones.
 
+## [0.2.0] - 2026-06-01
+
+### Added
+
+- Added server-side session primitives and explicit authentication session states.
+- Added secure session cookie options with `HttpOnly`, `SameSite=Lax`, and `Secure` defaults.
+- Added CSRF token primitives for future session-backed forms and unsafe requests.
+- Added SQLite persistence foundation using PDO.
+- Added migration tracking with `schema_migrations`.
+- Added runtime directory structure under `var/data/`.
+- Added ADRs for session, CSRF, and SQLite persistence strategies.
+
+### Changed
+
+- Updated README, security, and architecture documentation for the backend security foundation.
+
+### Not Included Yet
+
+- Password login.
+- User tables.
+- Password hashing.
+- TOTP.
+- Passkeys/WebAuthn.
+- Trusted devices.
+- Recovery flows.
+- libSQL remote runtime.
+- CI/CD.
+
 ## [0.1.1] - 2026-05-28
 
 ### Changed
@@ -52,5 +80,6 @@ The format follows Keep a Changelog conventions, and this project uses semantic 
 - SQLite/libSQL persistence.
 - CI/CD.
 
+[0.2.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.2.0
 [0.1.1]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.1.1
 [0.1.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.1.0
