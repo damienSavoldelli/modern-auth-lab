@@ -32,6 +32,15 @@ final readonly class Response
         return self::json(['error' => 'Not found'], 404);
     }
 
+    public static function html(string $body, int $statusCode = 200): self
+    {
+        return new self(
+            $body,
+            $statusCode,
+            ['Content-Type' => 'text/html; charset=utf-8'],
+        );
+    }
+
     public function send(): void
     {
         http_response_code($this->statusCode);
