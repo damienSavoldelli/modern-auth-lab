@@ -18,6 +18,7 @@ Implemented foundation:
 - `GET /health` diagnostic route.
 - Server-side session primitives and explicit authentication session states.
 - CSRF token primitives for future session-backed forms and unsafe requests.
+- SQLite persistence foundation with migration tracking.
 
 Not implemented yet:
 
@@ -28,6 +29,7 @@ Not implemented yet:
 - Passkeys/WebAuthn.
 - Trusted devices.
 - Recovery flows.
+- User-facing SQLite/libSQL persistence features.
 - CI/CD.
 
 ## Requirements

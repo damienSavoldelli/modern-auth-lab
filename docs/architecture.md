@@ -19,6 +19,7 @@ The architecture starts as modern vanilla PHP with explicit boundaries. The goal
 - Middleware handles cross-cutting HTTP concerns.
 - Security decisions live server-side.
 - Frontend modules improve interaction but do not make trusted authentication decisions.
+- Runtime persistence files live under `var/` and are not committed.
 
 ## Initial Backend Shape
 
