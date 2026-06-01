@@ -19,10 +19,11 @@ Implemented foundation:
 - Server-side session primitives and explicit authentication session states.
 - CSRF token primitives for future session-backed forms and unsafe requests.
 - SQLite persistence foundation with migration tracking.
+- User persistence schema, repository, password hashing, and password verification workflow.
 
 Not implemented yet:
 
-- Password authentication.
+- HTTP password login.
 - Login-backed authenticated sessions.
 - CSRF middleware and protected forms.
 - TOTP.
