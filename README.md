@@ -24,11 +24,11 @@ Implemented foundation:
 - Password-only full session login for the current pre-MFA milestone.
 - Protected `/account` route.
 - CSRF-protected logout.
+- Initial session-backed login rate limiting.
 
 Not implemented yet:
 
 - CSRF middleware.
-- Rate limiting.
 - Security event logging.
 - TOTP.
 - Passkeys/WebAuthn.
