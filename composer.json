@@ -1,6 +1,6 @@
 {
   "name": "modern-auth-lab/modern-auth-lab",
-  "description": "Educational modern authentication lab for TOTP, Passkeys/WebAuthn, and secure MFA fallback strategies.",
+  "description": "Progressive modern authentication lab for TOTP, Passkeys/WebAuthn, and secure MFA fallback strategies.",
   "type": "project",
   "license": "MIT",
   "require": {
@@ -24,7 +24,7 @@
     }
   },
   "scripts": {
-    "analyse": "phpstan analyse",
+    "analyse": "phpstan analyse --memory-limit=512M",
     "cs:check": "php-cs-fixer fix --dry-run --diff --verbose",
     "cs:fix": "php-cs-fixer fix --verbose",
     "seed:dev-user": "php bin/seed-dev-user.php",

@@ -6,12 +6,28 @@ namespace ModernAuthLab\Infrastructure\Persistence;
 
 use PDO;
 
+/**
+ * Persists and queries applied migration versions.
+ *
+ * The repository owns only migration metadata. It does not execute schema SQL;
+ * that responsibility belongs to MigrationRunner.
+ */
 final readonly class MigrationRepository
 {
+    /**
+     * Receive the PDO connection that stores migration metadata.
+     *
+     * @param PDO $pdo Configured SQLite connection.
+     */
     public function __construct(
         private PDO $pdo,
     ) {}
 
+    /**
+     * Create the migration tracking table if it does not exist.
+     *
+     * @return void
+     */
     public function ensureStorageExists(): void
     {
         $this->pdo->exec(<<<'SQL'
@@ -22,6 +38,13 @@ final readonly class MigrationRepository
             SQL);
     }
 
+    /**
+     * Check whether a migration version has already been applied.
+     *
+     * @param string $version Migration version.
+     *
+     * @return bool True when the migration version exists.
+     */
     public function has(string $version): bool
     {
         $statement = $this->pdo->prepare('SELECT 1 FROM schema_migrations WHERE version = :version');
@@ -30,6 +53,13 @@ final readonly class MigrationRepository
         return $statement->fetchColumn() !== false;
     }
 
+    /**
+     * Mark a migration version as applied.
+     *
+     * @param string $version Migration version.
+     *
+     * @return void
+     */
     public function record(string $version): void
     {
         $statement = $this->pdo->prepare('INSERT INTO schema_migrations (version) VALUES (:version)');
@@ -37,7 +67,9 @@ final readonly class MigrationRepository
     }
 
     /**
-     * @return list<string>
+     * Return applied migration versions in deterministic order.
+     *
+     * @return list<string> Applied migration versions.
      */
     public function all(): array
     {

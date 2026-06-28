@@ -4,6 +4,19 @@ All notable changes to Modern Auth Lab will be documented in this file.
 
 The format follows Keep a Changelog conventions, and this project uses semantic versioning for project milestones.
 
+## [0.4.1] - 2026-06-28
+
+### Added
+
+- Added PHPDoc class documentation across the PHP application source.
+- Added PHPDoc documentation for public methods across the PHP application source.
+- Added structured PHPDoc tags such as `@param`, `@return`, and `@throws`.
+- Added targeted expert comments for security-sensitive implementation decisions.
+
+### Changed
+
+- Updated `composer analyse` to run PHPStan with an explicit `512M` memory limit.
+
 ## [0.4.0] - 2026-06-28
 
 ### Added
@@ -142,6 +155,7 @@ The format follows Keep a Changelog conventions, and this project uses semantic 
 - SQLite/libSQL persistence.
 - CI/CD.
 
+[0.4.1]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.4.1
 [0.4.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.4.0
 [0.3.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.3.0
 [0.2.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.2.0

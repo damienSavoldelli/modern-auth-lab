@@ -6,16 +6,23 @@ namespace ModernAuthLab\Security\RateLimit;
 
 use Closure;
 
-// First-stage login throttling. It is intentionally session-backed so the
-// project can introduce brute-force controls before adding shared security
-// state or a distributed rate-limiting store.
+/**
+ * First-stage login throttling.
+ *
+ * It is intentionally session-backed so the project can introduce brute-force
+ * controls before adding shared security state or a distributed rate-limiting
+ * store.
+ */
 final class LoginRateLimiter
 {
     private const STORAGE_KEY = '_login_rate_limits';
 
     /**
-     * @param array<string, mixed> $storage
-     * @param Closure(): int|null $now
+     * @param array<string, mixed> $storage Session-backed limiter storage.
+     * @param int $maxAttempts Maximum failures allowed in the rolling window.
+     * @param int $windowSeconds Rolling window duration in seconds.
+     * @param int $lockSeconds Lock duration in seconds after the threshold is reached.
+     * @param Closure(): int|null $now Optional clock for deterministic tests.
      */
     public function __construct(
         private array &$storage,
@@ -25,6 +32,13 @@ final class LoginRateLimiter
         private ?Closure $now = null,
     ) {}
 
+    /**
+     * Check whether the identifier can attempt password authentication.
+     *
+     * @param string $identifier Opaque rate-limit key.
+     *
+     * @return bool True when another attempt is currently allowed.
+     */
     public function isAllowed(string $identifier): bool
     {
         $record = $this->record($identifier);
@@ -39,6 +53,13 @@ final class LoginRateLimiter
         return count($this->recentAttempts($record, $now)) < $this->maxAttempts;
     }
 
+    /**
+     * Record one failed attempt and lock the identifier if the threshold is met.
+     *
+     * @param string $identifier Opaque rate-limit key.
+     *
+     * @return void
+     */
     public function recordFailure(string $identifier): void
     {
         $now = $this->now();
@@ -54,13 +75,22 @@ final class LoginRateLimiter
         ];
     }
 
+    /**
+     * Remove limiter state after successful authentication.
+     *
+     * @param string $identifier Opaque rate-limit key.
+     *
+     * @return void
+     */
     public function clear(string $identifier): void
     {
         unset($this->storage[self::STORAGE_KEY][$identifier]);
     }
 
     /**
-     * @return array{attempts: list<int>, locked_until: int}
+     * @param string $identifier Opaque rate-limit key.
+     *
+     * @return array{attempts: list<int>, locked_until: int} Normalized limiter record.
      */
     private function record(string $identifier): array
     {
@@ -88,9 +118,10 @@ final class LoginRateLimiter
     }
 
     /**
-     * @param array{attempts: list<int>, locked_until: int} $record
+     * @param array{attempts: list<int>, locked_until: int} $record Normalized limiter record.
+     * @param int $now Current unix timestamp.
      *
-     * @return list<int>
+     * @return list<int> Attempt timestamps still inside the rolling window.
      */
     private function recentAttempts(array $record, int $now): array
     {

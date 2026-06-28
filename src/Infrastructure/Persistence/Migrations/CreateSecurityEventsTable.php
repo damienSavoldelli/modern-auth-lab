@@ -6,13 +6,29 @@ namespace ModernAuthLab\Infrastructure\Persistence\Migrations;
 
 use ModernAuthLab\Infrastructure\Persistence\Migration;
 
+/**
+ * Creates the first queryable security event audit table.
+ *
+ * The schema is intentionally narrow until retention rules, user-agent policy,
+ * trusted-device state, and recovery flows are designed.
+ */
 final readonly class CreateSecurityEventsTable implements Migration
 {
+    /**
+     * Return the stable schema version for security events.
+     *
+     * @return string Migration version.
+     */
     public function version(): string
     {
         return '0003_create_security_events_table';
     }
 
+    /**
+     * Return SQL for the security event table and lookup indexes.
+     *
+     * @return string Migration SQL.
+     */
     public function up(): string
     {
         return <<<'SQL'

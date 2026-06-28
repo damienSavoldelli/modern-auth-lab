@@ -6,6 +6,13 @@ namespace ModernAuthLab\Http;
 
 use Closure;
 
+/**
+ * Minimal method/path router for the PHP front controller.
+ *
+ * The router intentionally has no middleware system yet. Security boundaries
+ * remain explicit in controllers until the repeated patterns justify extracting
+ * shared middleware.
+ */
 final class Router
 {
     /**
@@ -14,6 +21,9 @@ final class Router
     private array $routes = [];
 
     /**
+     * Register a GET route.
+     *
+     * @param string $path Route path.
      * @param Closure(): Response $handler
      */
     public function get(string $path, Closure $handler): void
@@ -22,6 +32,9 @@ final class Router
     }
 
     /**
+     * Register a POST route.
+     *
+     * @param string $path Route path.
      * @param Closure(): Response $handler
      */
     public function post(string $path, Closure $handler): void
@@ -29,6 +42,14 @@ final class Router
         $this->routes['POST'][$this->normalizePath($path)] = $handler;
     }
 
+    /**
+     * Dispatch the request to a registered handler or return 404.
+     *
+     * @param string $method HTTP method.
+     * @param string $path Request path.
+     *
+     * @return Response Matched route response or not-found response.
+     */
     public function dispatch(string $method, string $path): Response
     {
         $normalizedMethod = strtoupper($method);

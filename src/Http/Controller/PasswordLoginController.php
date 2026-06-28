@@ -14,11 +14,24 @@ use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
 use ModernAuthLab\Session\AuthSession;
 
+/**
+ * Handles the password login form and current pre-MFA full-session transition.
+ *
+ * This controller coordinates several security concerns at the HTTP boundary:
+ * CSRF validation, login rate limiting, password verification, security event
+ * logging, session state transition, and session id rotation.
+ */
 final readonly class PasswordLoginController
 {
     private const CSRF_TOKEN_ID = 'login_form';
 
     /**
+     * @param CsrfTokenManager $csrf CSRF token manager for login form submissions.
+     * @param PasswordAuthenticator $authenticator Password verification service.
+     * @param AuthSession $session Current authentication session facade.
+     * @param LoginRateLimiter $rateLimiter Initial login throttling control.
+     * @param SecurityEventLogger $securityEvents Audit logger for login events.
+     * @param string $clientIp Server-observed client IP.
      * @param Closure(): void $rotateSessionId
      */
     public function __construct(
@@ -31,6 +44,11 @@ final readonly class PasswordLoginController
         private Closure $rotateSessionId,
     ) {}
 
+    /**
+     * Render a fresh login form with a CSRF token.
+     *
+     * @return Response Login form response.
+     */
     public function show(): Response
     {
         $token = $this->csrf->issue(self::CSRF_TOKEN_ID);
@@ -39,7 +57,15 @@ final readonly class PasswordLoginController
     }
 
     /**
+     * Process password login submission.
+     *
+     * Successful password authentication currently creates a full session only
+     * because this is the pre-MFA milestone. Later MFA flows will split password
+     * verification from final authentication again.
+     *
      * @param array<string, mixed> $post
+     *
+     * @return Response Redirect on success or generic failure response.
      */
     public function submit(array $post): Response
     {
@@ -89,6 +115,16 @@ final readonly class PasswordLoginController
         return Response::redirect('/account');
     }
 
+    /**
+     * Re-render the login form with the generic failure message.
+     *
+     * The same message is used for invalid credentials and rate-limited attempts
+     * to avoid leaking account or policy state through the UI.
+     *
+     * @param int $statusCode HTTP status code to return.
+     *
+     * @return Response Login form with generic failure message.
+     */
     private function failedLoginResponse(int $statusCode = 401): Response
     {
         $token = $this->csrf->issue(self::CSRF_TOKEN_ID);
