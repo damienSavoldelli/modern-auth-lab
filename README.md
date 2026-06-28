@@ -20,12 +20,16 @@ Implemented foundation:
 - CSRF token primitives for future session-backed forms and unsafe requests.
 - SQLite persistence foundation with migration tracking.
 - User persistence schema, repository, password hashing, and password verification workflow.
-- Minimal password login form with CSRF validation and `password_verified` session state.
+- Minimal password login form with CSRF validation.
+- Password-only full session login for the current pre-MFA milestone.
+- Protected `/account` route.
+- CSRF-protected logout.
 
 Not implemented yet:
 
-- Login-backed authenticated sessions.
-- CSRF middleware and protected forms.
+- CSRF middleware.
+- Rate limiting.
+- Security event logging.
 - TOTP.
 - Passkeys/WebAuthn.
 - Trusted devices.
@@ -88,6 +92,18 @@ Development credentials:
 ```text
 Email: dev@example.com
 Password: DevPassword123!
+```
+
+Login page:
+
+```text
+http://127.0.0.1:8080/login
+```
+
+Protected account page:
+
+```text
+http://127.0.0.1:8080/account
 ```
 
 ## Frontend Commands
