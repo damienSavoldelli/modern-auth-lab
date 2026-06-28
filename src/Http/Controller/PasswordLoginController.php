@@ -9,6 +9,7 @@ use ModernAuthLab\Application\Auth\PasswordAuthenticator;
 use ModernAuthLab\Http\Response;
 use ModernAuthLab\Security\Csrf\CsrfTokenException;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
+use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
 use ModernAuthLab\Session\AuthSession;
 
 final readonly class PasswordLoginController
@@ -22,6 +23,8 @@ final readonly class PasswordLoginController
         private CsrfTokenManager $csrf,
         private PasswordAuthenticator $authenticator,
         private AuthSession $session,
+        private LoginRateLimiter $rateLimiter,
+        private string $clientIp,
         private Closure $rotateSessionId,
     ) {}
 
@@ -43,28 +46,41 @@ final readonly class PasswordLoginController
             return $this->failedLoginResponse();
         }
 
+        $email = $this->stringValue($post['email'] ?? null);
+        // The limiter key combines the submitted account identifier with the
+        // server-observed IP. It must not reveal raw email addresses in session
+        // storage, so the final key is hashed below.
+        $rateLimitIdentifier = $this->rateLimitIdentifier($email);
+
+        if (! $this->rateLimiter->isAllowed($rateLimitIdentifier)) {
+            return $this->failedLoginResponse(429);
+        }
+
         $result = $this->authenticator->authenticate(
-            $this->stringValue($post['email'] ?? null),
+            $email,
             $this->stringValue($post['password'] ?? null),
         );
 
         if (! $result->success) {
+            $this->rateLimiter->recordFailure($rateLimitIdentifier);
+
             return $this->failedLoginResponse();
         }
 
+        $this->rateLimiter->clear($rateLimitIdentifier);
         $this->session->markFullyAuthenticated();
         ($this->rotateSessionId)();
 
         return Response::redirect('/account');
     }
 
-    private function failedLoginResponse(): Response
+    private function failedLoginResponse(int $statusCode = 401): Response
     {
         $token = $this->csrf->issue(self::CSRF_TOKEN_ID);
 
         return Response::html(
             $this->renderForm($token->value, 'Invalid credentials.'),
-            401,
+            $statusCode,
         );
     }
 
@@ -108,5 +124,10 @@ final readonly class PasswordLoginController
     private function stringValue(mixed $value): string
     {
         return is_string($value) ? $value : '';
+    }
+
+    private function rateLimitIdentifier(string $email): string
+    {
+        return hash('sha256', strtolower(trim($email)) . '|' . $this->clientIp);
     }
 }
