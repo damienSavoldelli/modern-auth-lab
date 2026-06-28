@@ -4,6 +4,38 @@ All notable changes to Modern Auth Lab will be documented in this file.
 
 The format follows Keep a Changelog conventions, and this project uses semantic versioning for project milestones.
 
+## [0.3.0] - 2026-06-28
+
+### Added
+
+- Added `users` persistence schema.
+- Added `User` domain model.
+- Added `UserRepository`.
+- Added password hashing and verification with PHP native password APIs.
+- Added password authentication workflow.
+- Added minimal password login form.
+- Added CSRF validation for login submission.
+- Added `password_verified` session state transition after successful password verification.
+- Added session ID rotation after password verification.
+- Added local development user seed command.
+- Added ADRs for user password foundation and password login form.
+
+### Changed
+
+- Updated README with login and development user instructions.
+
+### Not Included Yet
+
+- Full authenticated session state.
+- Logout.
+- Private route protection.
+- Rate limiting.
+- Security event logging.
+- TOTP.
+- Passkeys/WebAuthn.
+- Trusted devices.
+- Recovery flows.
+
 ## [0.2.0] - 2026-06-01
 
 ### Added
@@ -80,6 +112,7 @@ The format follows Keep a Changelog conventions, and this project uses semantic 
 - SQLite/libSQL persistence.
 - CI/CD.
 
+[0.3.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.3.0
 [0.2.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.2.0
 [0.1.1]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.1.1
 [0.1.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.1.0
