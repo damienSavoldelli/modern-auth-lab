@@ -6,6 +6,9 @@ namespace ModernAuthLab\Security\RateLimit;
 
 use Closure;
 
+// First-stage login throttling. It is intentionally session-backed so the
+// project can introduce brute-force controls before adding shared security
+// state or a distributed rate-limiting store.
 final class LoginRateLimiter
 {
     private const STORAGE_KEY = '_login_rate_limits';
@@ -27,6 +30,8 @@ final class LoginRateLimiter
         $record = $this->record($identifier);
         $now = $this->now();
 
+        // A lock wins over the rolling window. This keeps the response stable
+        // until the temporary lock expires.
         if (($record['locked_until'] ?? 0) > $now) {
             return false;
         }
@@ -41,6 +46,8 @@ final class LoginRateLimiter
         $attempts = $this->recentAttempts($record, $now);
         $attempts[] = $now;
 
+        // Store timestamps, not request data. The controller owns the identifier
+        // shape so this class does not need to know about email or IP semantics.
         $this->storage[self::STORAGE_KEY][$identifier] = [
             'attempts' => $attempts,
             'locked_until' => count($attempts) >= $this->maxAttempts ? $now + $this->lockSeconds : 0,
@@ -59,6 +66,8 @@ final class LoginRateLimiter
     {
         $records = $this->storage[self::STORAGE_KEY] ?? [];
 
+        // Session data is user-controlled storage from PHP's point of view, so
+        // read defensively and fall back to an empty limiter state.
         if (! is_array($records)) {
             return ['attempts' => [], 'locked_until' => 0];
         }

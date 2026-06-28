@@ -47,6 +47,9 @@ final readonly class PasswordLoginController
         }
 
         $email = $this->stringValue($post['email'] ?? null);
+        // The limiter key combines the submitted account identifier with the
+        // server-observed IP. It must not reveal raw email addresses in session
+        // storage, so the final key is hashed below.
         $rateLimitIdentifier = $this->rateLimitIdentifier($email);
 
         if (! $this->rateLimiter->isAllowed($rateLimitIdentifier)) {
