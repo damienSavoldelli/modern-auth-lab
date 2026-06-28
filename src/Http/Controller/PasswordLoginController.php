@@ -6,6 +6,8 @@ namespace ModernAuthLab\Http\Controller;
 
 use Closure;
 use ModernAuthLab\Application\Auth\PasswordAuthenticator;
+use ModernAuthLab\Application\Security\SecurityEventLogger;
+use ModernAuthLab\Domain\Security\SecurityEventType;
 use ModernAuthLab\Http\Response;
 use ModernAuthLab\Security\Csrf\CsrfTokenException;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
@@ -24,6 +26,7 @@ final readonly class PasswordLoginController
         private PasswordAuthenticator $authenticator,
         private AuthSession $session,
         private LoginRateLimiter $rateLimiter,
+        private SecurityEventLogger $securityEvents,
         private string $clientIp,
         private Closure $rotateSessionId,
     ) {}
@@ -63,11 +66,23 @@ final readonly class PasswordLoginController
 
         if (! $result->success) {
             $this->rateLimiter->recordFailure($rateLimitIdentifier);
+            $this->securityEvents->record(
+                SecurityEventType::PasswordLoginFailed,
+                null,
+                $email,
+                $this->clientIp,
+            );
 
             return $this->failedLoginResponse();
         }
 
         $this->rateLimiter->clear($rateLimitIdentifier);
+        $this->securityEvents->record(
+            SecurityEventType::PasswordLoginSucceeded,
+            $result->user?->id,
+            $result->user?->email,
+            $this->clientIp,
+        );
         $this->session->markFullyAuthenticated();
         ($this->rotateSessionId)();
 

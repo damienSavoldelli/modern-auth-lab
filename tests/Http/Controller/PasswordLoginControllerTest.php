@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace ModernAuthLab\Tests\Http\Controller;
 
 use ModernAuthLab\Application\Auth\PasswordAuthenticator;
+use ModernAuthLab\Application\Security\SecurityEventLogger;
+use ModernAuthLab\Domain\Security\SecurityEventType;
 use ModernAuthLab\Http\Controller\PasswordLoginController;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRunner;
+use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateSecurityEventsTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUsersTable;
+use ModernAuthLab\Infrastructure\Persistence\SecurityEventRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\Password\PasswordHasher;
@@ -20,6 +24,8 @@ use PHPUnit\Framework\TestCase;
 
 final class PasswordLoginControllerTest extends TestCase
 {
+    private SecurityEventRepository $events;
+
     public function testShowsLoginFormWithCsrfToken(): void
     {
         $storage = [];
@@ -52,6 +58,7 @@ final class PasswordLoginControllerTest extends TestCase
         self::assertSame(['Location' => '/account'], $response->headers);
         self::assertSame(AuthSessionState::FullyAuthenticated, (new AuthSession($storage))->state());
         self::assertTrue($rotated);
+        self::assertSame(SecurityEventType::PasswordLoginSucceeded->value, $this->events->all()[0]['type']);
     }
 
     public function testRejectsInvalidPasswordWithoutChangingSessionState(): void
@@ -73,6 +80,7 @@ final class PasswordLoginControllerTest extends TestCase
         self::assertSame(AuthSessionState::Anonymous, (new AuthSession($storage))->state());
         self::assertFalse($rotated);
         self::assertStringContainsString('Invalid credentials.', $response->body);
+        self::assertSame(SecurityEventType::PasswordLoginFailed->value, $this->events->all()[0]['type']);
     }
 
     public function testRejectsInvalidCsrfTokenWithoutAuthenticating(): void
@@ -127,14 +135,17 @@ final class PasswordLoginControllerTest extends TestCase
     private function createController(array &$storage, ?\Closure $rotateSessionId = null): PasswordLoginController
     {
         $passwords = new PasswordHasher();
-        $users = new UserRepository($this->createMigratedConnection());
+        $pdo = $this->createMigratedConnection();
+        $users = new UserRepository($pdo);
         $users->create('user@example.com', $passwords->hash('correct password'));
+        $this->events = new SecurityEventRepository($pdo);
 
         return new PasswordLoginController(
             new CsrfTokenManager($storage),
             new PasswordAuthenticator($users, $passwords),
             new AuthSession($storage),
             new LoginRateLimiter($storage),
+            new SecurityEventLogger($this->events),
             '127.0.0.1',
             $rotateSessionId ?? static function (): void {},
         );
@@ -146,7 +157,10 @@ final class PasswordLoginControllerTest extends TestCase
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
-        $runner = new MigrationRunner($pdo, new MigrationRepository($pdo), [new CreateUsersTable()]);
+        $runner = new MigrationRunner($pdo, new MigrationRepository($pdo), [
+            new CreateUsersTable(),
+            new CreateSecurityEventsTable(),
+        ]);
         $runner->run();
 
         return $pdo;
