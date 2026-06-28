@@ -15,6 +15,12 @@ final readonly class User
 {
     /**
      * Hydrate a user record from trusted persistence data.
+     *
+     * @param int $id Database identifier.
+     * @param string $email User email address.
+     * @param string $passwordHash Stored password hash.
+     * @param string $createdAt Creation timestamp from persistence.
+     * @param string $updatedAt Last update timestamp from persistence.
      */
     public function __construct(
         public int $id,

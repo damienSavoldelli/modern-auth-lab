@@ -17,6 +17,8 @@ final readonly class UserRepository
 {
     /**
      * Receive the PDO connection used for user persistence.
+     *
+     * @param PDO $pdo Configured SQLite connection.
      */
     public function __construct(
         private PDO $pdo,
@@ -24,6 +26,13 @@ final readonly class UserRepository
 
     /**
      * Persist a new user with an already computed password hash.
+     *
+     * @param string $email User email address.
+     * @param string $passwordHash Password hash produced by PasswordHasher.
+     *
+     * @return User Created user record.
+     *
+     * @throws \PDOException When insertion fails.
      */
     public function create(string $email, string $passwordHash): User
     {
@@ -40,6 +49,10 @@ final readonly class UserRepository
 
     /**
      * Find a user by email or return null for a missing account.
+     *
+     * @param string $email User email address.
+     *
+     * @return User|null Matching user or null.
      */
     public function findByEmail(string $email): ?User
     {
@@ -72,7 +85,9 @@ final readonly class UserRepository
     }
 
     /**
-     * @param array<string, mixed> $row
+     * @param array<string, mixed> $row Raw database row.
+     *
+     * @return User Hydrated user domain object.
      */
     private function mapRowToUser(array $row): User
     {

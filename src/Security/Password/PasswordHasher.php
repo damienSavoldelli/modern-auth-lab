@@ -13,7 +13,8 @@ namespace ModernAuthLab\Security\Password;
 final readonly class PasswordHasher
 {
     /**
-     * @param array<string, mixed> $options
+     * @param string|int|null $algorithm PHP password hashing algorithm.
+     * @param array<string, mixed> $options Algorithm-specific options.
      */
     public function __construct(
         private string|int|null $algorithm = PASSWORD_DEFAULT,
@@ -22,6 +23,10 @@ final readonly class PasswordHasher
 
     /**
      * Hash a plain password with the configured PHP password algorithm.
+     *
+     * @param string $plainPassword Plain password received from a trusted caller.
+     *
+     * @return string Password hash suitable for storage.
      */
     public function hash(string $plainPassword): string
     {
@@ -30,6 +35,11 @@ final readonly class PasswordHasher
 
     /**
      * Verify a plain password against a stored hash using PHP's safe verifier.
+     *
+     * @param string $plainPassword Submitted plain password.
+     * @param string $passwordHash Stored password hash.
+     *
+     * @return bool True when the submitted password matches the stored hash.
      */
     public function verify(string $plainPassword, string $passwordHash): bool
     {
@@ -38,6 +48,10 @@ final readonly class PasswordHasher
 
     /**
      * Check whether a stored hash should be upgraded to current policy.
+     *
+     * @param string $passwordHash Stored password hash.
+     *
+     * @return bool True when the hash should be recalculated with current policy.
      */
     public function needsRehash(string $passwordHash): bool
     {

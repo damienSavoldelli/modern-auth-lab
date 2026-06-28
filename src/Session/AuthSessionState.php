@@ -19,6 +19,8 @@ enum AuthSessionState: string
 
     /**
      * Determine whether the current state may access protected routes.
+     *
+     * @return bool True when the state represents full authentication.
      */
     public function isFullyAuthenticated(): bool
     {

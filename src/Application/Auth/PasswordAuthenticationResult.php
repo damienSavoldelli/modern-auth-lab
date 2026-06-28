@@ -22,6 +22,10 @@ final readonly class PasswordAuthenticationResult
 
     /**
      * Create a successful authentication result for the verified user.
+     *
+     * @param User $user User whose password hash has been verified.
+     *
+     * @return self Successful password authentication result.
      */
     public static function success(User $user): self
     {
@@ -30,6 +34,8 @@ final readonly class PasswordAuthenticationResult
 
     /**
      * Create a generic failed authentication result.
+     *
+     * @return self Failed password authentication result without account detail.
      */
     public static function failure(): self
     {

@@ -20,6 +20,9 @@ final readonly class DevUserSeeder
 
     /**
      * Receive collaborators for local user lookup, creation, and password hashing.
+     *
+     * @param UserRepository $users User persistence boundary.
+     * @param PasswordHasher $passwords Password hashing service.
      */
     public function __construct(
         private UserRepository $users,
@@ -28,6 +31,8 @@ final readonly class DevUserSeeder
 
     /**
      * Create the development user if it does not already exist.
+     *
+     * @return DevUserSeedResult Creation or reuse result.
      */
     public function seed(): DevUserSeedResult
     {

@@ -16,6 +16,8 @@ use Throwable;
 final readonly class MigrationRunner
 {
     /**
+     * @param PDO $pdo Configured SQLite connection.
+     * @param MigrationRepository $repository Applied migration repository.
      * @param list<Migration> $migrations
      */
     public function __construct(
@@ -26,6 +28,10 @@ final readonly class MigrationRunner
 
     /**
      * Apply each pending migration exactly once.
+     *
+     * @return void
+     *
+     * @throws \Throwable When migration SQL or metadata recording fails.
      */
     public function run(): void
     {

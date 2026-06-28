@@ -26,6 +26,12 @@ final readonly class PasswordLoginController
     private const CSRF_TOKEN_ID = 'login_form';
 
     /**
+     * @param CsrfTokenManager $csrf CSRF token manager for login form submissions.
+     * @param PasswordAuthenticator $authenticator Password verification service.
+     * @param AuthSession $session Current authentication session facade.
+     * @param LoginRateLimiter $rateLimiter Initial login throttling control.
+     * @param SecurityEventLogger $securityEvents Audit logger for login events.
+     * @param string $clientIp Server-observed client IP.
      * @param Closure(): void $rotateSessionId
      */
     public function __construct(
@@ -40,6 +46,8 @@ final readonly class PasswordLoginController
 
     /**
      * Render a fresh login form with a CSRF token.
+     *
+     * @return Response Login form response.
      */
     public function show(): Response
     {
@@ -56,6 +64,8 @@ final readonly class PasswordLoginController
      * verification from final authentication again.
      *
      * @param array<string, mixed> $post
+     *
+     * @return Response Redirect on success or generic failure response.
      */
     public function submit(array $post): Response
     {
@@ -110,6 +120,10 @@ final readonly class PasswordLoginController
      *
      * The same message is used for invalid credentials and rate-limited attempts
      * to avoid leaking account or policy state through the UI.
+     *
+     * @param int $statusCode HTTP status code to return.
+     *
+     * @return Response Login form with generic failure message.
      */
     private function failedLoginResponse(int $statusCode = 401): Response
     {

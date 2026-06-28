@@ -14,11 +14,15 @@ interface Migration
 {
     /**
      * Return the stable migration identifier stored in schema_migrations.
+     *
+     * @return string Stable migration version.
      */
     public function version(): string;
 
     /**
      * Return SQL that applies the migration.
+     *
+     * @return string Migration SQL.
      */
     public function up(): string;
 }

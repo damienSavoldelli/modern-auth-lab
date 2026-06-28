@@ -16,6 +16,10 @@ final class CsrfTokenException extends RuntimeException
 {
     /**
      * Build an exception for absent or empty submitted token values.
+     *
+     * @param string $tokenId Token slot identifier.
+     *
+     * @return self Missing-token exception.
      */
     public static function missing(string $tokenId): self
     {
@@ -24,6 +28,10 @@ final class CsrfTokenException extends RuntimeException
 
     /**
      * Build an exception for submitted token values that do not match storage.
+     *
+     * @param string $tokenId Token slot identifier.
+     *
+     * @return self Invalid-token exception.
      */
     public static function invalid(string $tokenId): self
     {

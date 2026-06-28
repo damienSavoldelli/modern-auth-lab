@@ -16,6 +16,8 @@ final readonly class CreateUsersTable implements Migration
 {
     /**
      * Return the stable schema version for user persistence.
+     *
+     * @return string Migration version.
      */
     public function version(): string
     {
@@ -24,6 +26,8 @@ final readonly class CreateUsersTable implements Migration
 
     /**
      * Return SQL for users and their email lookup index.
+     *
+     * @return string Migration SQL.
      */
     public function up(): string
     {

@@ -16,6 +16,9 @@ final readonly class DevUserSeedResult
 {
     /**
      * Describe whether the seed operation created or reused the user.
+     *
+     * @param bool $created True when the user was created by this run.
+     * @param User $user Created or existing development user.
      */
     public function __construct(
         public bool $created,

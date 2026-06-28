@@ -17,7 +17,7 @@ final class CsrfTokenManager
     private const TOKEN_BYTES = 32;
 
     /**
-     * @param array<string, mixed> $storage
+     * @param array<string, mixed> $storage Session-backed token storage.
      */
     public function __construct(
         private array &$storage,
@@ -25,6 +25,13 @@ final class CsrfTokenManager
 
     /**
      * Issue a fresh token for the given form/action identifier.
+     *
+     * @param string $tokenId Token slot identifier.
+     *
+     * @return CsrfToken Newly issued token.
+     *
+     * @throws CsrfTokenException When the token id is empty.
+     * @throws \Random\RandomException When secure random generation fails.
      */
     public function issue(string $tokenId): CsrfToken
     {
@@ -38,6 +45,13 @@ final class CsrfTokenManager
 
     /**
      * Validate a submitted token without consuming it.
+     *
+     * @param string $tokenId Token slot identifier.
+     * @param string|null $submittedValue Submitted token value.
+     *
+     * @return void
+     *
+     * @throws CsrfTokenException When the token is missing or invalid.
      */
     public function validate(string $tokenId, ?string $submittedValue): void
     {
@@ -56,6 +70,13 @@ final class CsrfTokenManager
 
     /**
      * Validate and then remove the token to model one-time unsafe actions.
+     *
+     * @param string $tokenId Token slot identifier.
+     * @param string|null $submittedValue Submitted token value.
+     *
+     * @return void
+     *
+     * @throws CsrfTokenException When the token is missing or invalid.
      */
     public function consume(string $tokenId, ?string $submittedValue): void
     {
@@ -66,6 +87,8 @@ final class CsrfTokenManager
 
     /**
      * Remove all CSRF tokens from the backing storage.
+     *
+     * @return void
      */
     public function clear(): void
     {
@@ -80,7 +103,7 @@ final class CsrfTokenManager
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, string> Token storage indexed by token id.
      */
     private function &tokens(): array
     {

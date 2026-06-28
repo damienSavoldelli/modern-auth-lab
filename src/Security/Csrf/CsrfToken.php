@@ -11,6 +11,9 @@ final readonly class CsrfToken
 {
     /**
      * Carry the token id and generated value.
+     *
+     * @param string $id Token slot identifier.
+     * @param string $value Generated token value.
      */
     public function __construct(
         public string $id,

@@ -17,6 +17,12 @@ final class NativeSession
 {
     /**
      * Configure cookie parameters before the session starts.
+     *
+     * @param SessionCookieOptions $options Validated cookie options.
+     *
+     * @return void
+     *
+     * @throws RuntimeException When the session is already active.
      */
     public function configure(SessionCookieOptions $options): void
     {
@@ -28,6 +34,10 @@ final class NativeSession
 
     /**
      * Start the PHP session if it is not already active.
+     *
+     * @return void
+     *
+     * @throws RuntimeException When PHP cannot start the session.
      */
     public function start(): void
     {
@@ -42,6 +52,10 @@ final class NativeSession
 
     /**
      * Start the session and expose the authentication-state facade.
+     *
+     * @return AuthSession Authentication-state facade over $_SESSION.
+     *
+     * @throws RuntimeException When PHP cannot start the session.
      */
     public function auth(): AuthSession
     {
@@ -52,6 +66,10 @@ final class NativeSession
 
     /**
      * Rotate the session id after an authentication privilege change.
+     *
+     * @return void
+     *
+     * @throws RuntimeException When the session is inactive or rotation fails.
      */
     public function rotateId(): void
     {
@@ -64,6 +82,10 @@ final class NativeSession
 
     /**
      * Destroy the active session after logout.
+     *
+     * @return void
+     *
+     * @throws RuntimeException When the session is inactive or destruction fails.
      */
     public function destroy(): void
     {

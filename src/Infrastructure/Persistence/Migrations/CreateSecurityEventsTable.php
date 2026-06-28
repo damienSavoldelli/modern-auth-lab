@@ -16,6 +16,8 @@ final readonly class CreateSecurityEventsTable implements Migration
 {
     /**
      * Return the stable schema version for security events.
+     *
+     * @return string Migration version.
      */
     public function version(): string
     {
@@ -24,6 +26,8 @@ final readonly class CreateSecurityEventsTable implements Migration
 
     /**
      * Return SQL for the security event table and lookup indexes.
+     *
+     * @return string Migration SQL.
      */
     public function up(): string
     {

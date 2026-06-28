@@ -16,6 +16,8 @@ final readonly class MigrationRepository
 {
     /**
      * Receive the PDO connection that stores migration metadata.
+     *
+     * @param PDO $pdo Configured SQLite connection.
      */
     public function __construct(
         private PDO $pdo,
@@ -23,6 +25,8 @@ final readonly class MigrationRepository
 
     /**
      * Create the migration tracking table if it does not exist.
+     *
+     * @return void
      */
     public function ensureStorageExists(): void
     {
@@ -36,6 +40,10 @@ final readonly class MigrationRepository
 
     /**
      * Check whether a migration version has already been applied.
+     *
+     * @param string $version Migration version.
+     *
+     * @return bool True when the migration version exists.
      */
     public function has(string $version): bool
     {
@@ -47,6 +55,10 @@ final readonly class MigrationRepository
 
     /**
      * Mark a migration version as applied.
+     *
+     * @param string $version Migration version.
+     *
+     * @return void
      */
     public function record(string $version): void
     {
@@ -57,7 +69,7 @@ final readonly class MigrationRepository
     /**
      * Return applied migration versions in deterministic order.
      *
-     * @return list<string>
+     * @return list<string> Applied migration versions.
      */
     public function all(): array
     {

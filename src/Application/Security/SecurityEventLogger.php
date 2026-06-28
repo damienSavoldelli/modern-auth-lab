@@ -17,6 +17,8 @@ final readonly class SecurityEventLogger
 {
     /**
      * Receive the event repository used for durable audit writes.
+     *
+     * @param SecurityEventRepository $events Durable security event storage.
      */
     public function __construct(
         private SecurityEventRepository $events,
@@ -24,6 +26,11 @@ final readonly class SecurityEventLogger
 
     /**
      * Record an authentication-sensitive event without storing secrets.
+     *
+     * @param SecurityEventType $type Event vocabulary value.
+     * @param int|null $userId Authenticated user id when known.
+     * @param string|null $email Submitted or known email when relevant.
+     * @param string $clientIp Server-observed client IP.
      */
     public function record(
         SecurityEventType $type,

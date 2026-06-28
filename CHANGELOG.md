@@ -10,6 +10,7 @@ The format follows Keep a Changelog conventions, and this project uses semantic 
 
 - Added PHPDoc class documentation across the PHP application source.
 - Added PHPDoc documentation for public methods across the PHP application source.
+- Added structured PHPDoc tags such as `@param`, `@return`, and `@throws`.
 - Added targeted expert comments for security-sensitive implementation decisions.
 
 ### Changed

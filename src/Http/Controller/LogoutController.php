@@ -23,6 +23,10 @@ final readonly class LogoutController
     private const CSRF_TOKEN_ID = 'logout_form';
 
     /**
+     * @param AuthSession $session Current authentication session facade.
+     * @param CsrfTokenManager $csrf CSRF token manager for logout validation.
+     * @param SecurityEventLogger $securityEvents Audit logger for logout events.
+     * @param string $clientIp Server-observed client IP.
      * @param Closure(): void $destroySession
      */
     public function __construct(
@@ -37,6 +41,8 @@ final readonly class LogoutController
      * Validate logout intent, record the security event, and destroy the session.
      *
      * @param array<string, mixed> $post
+     *
+     * @return Response Redirect after logout or invalid logout response.
      */
     public function submit(array $post): Response
     {

@@ -17,6 +17,8 @@ final readonly class SqliteConnectionFactory
 {
     /**
      * Receive the SQLite database configuration.
+     *
+     * @param DatabaseConfig $config SQLite database configuration.
      */
     public function __construct(
         private DatabaseConfig $config,
@@ -24,6 +26,11 @@ final readonly class SqliteConnectionFactory
 
     /**
      * Create a configured PDO connection and ensure the database directory exists.
+     *
+     * @return PDO Configured SQLite PDO connection.
+     *
+     * @throws RuntimeException When the database directory cannot be created.
+     * @throws \PDOException When PDO cannot open or configure the database.
      */
     public function connect(): PDO
     {

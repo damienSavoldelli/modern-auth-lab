@@ -16,6 +16,10 @@ final readonly class DatabaseConfig
 {
     /**
      * Validate the filesystem path used for the SQLite database.
+     *
+     * @param string $path SQLite database file path.
+     *
+     * @throws InvalidArgumentException When the path is empty.
      */
     public function __construct(
         public string $path,
@@ -27,6 +31,10 @@ final readonly class DatabaseConfig
 
     /**
      * Build the default local database path under the project runtime directory.
+     *
+     * @param string $projectRoot Absolute or relative project root.
+     *
+     * @return self Default SQLite configuration.
      */
     public static function default(string $projectRoot): self
     {

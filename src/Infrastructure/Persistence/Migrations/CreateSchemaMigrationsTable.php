@@ -16,6 +16,8 @@ final readonly class CreateSchemaMigrationsTable implements Migration
 {
     /**
      * Return the stable schema version for the migration tracking table.
+     *
+     * @return string Migration version.
      */
     public function version(): string
     {
@@ -24,6 +26,8 @@ final readonly class CreateSchemaMigrationsTable implements Migration
 
     /**
      * Return the SQL for the migration tracking table.
+     *
+     * @return string Migration SQL.
      */
     public function up(): string
     {

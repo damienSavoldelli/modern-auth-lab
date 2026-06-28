@@ -13,6 +13,8 @@ namespace ModernAuthLab\Http;
 final readonly class Response
 {
     /**
+     * @param string $body Response body.
+     * @param int $statusCode HTTP status code.
      * @param array<string, string> $headers
      */
     public function __construct(
@@ -25,6 +27,11 @@ final readonly class Response
      * Build a JSON response with a strict UTF-8 JSON content type.
      *
      * @param array<string, mixed> $data
+     * @param int $statusCode HTTP status code.
+     *
+     * @return self JSON response.
+     *
+     * @throws \JsonException When the payload cannot be encoded.
      */
     public static function json(array $data, int $statusCode = 200): self
     {
@@ -37,6 +44,10 @@ final readonly class Response
 
     /**
      * Build the default not-found response.
+     *
+     * @return self JSON 404 response.
+     *
+     * @throws \JsonException When the payload cannot be encoded.
      */
     public static function notFound(): self
     {
@@ -45,6 +56,11 @@ final readonly class Response
 
     /**
      * Build an HTML response.
+     *
+     * @param string $body HTML response body.
+     * @param int $statusCode HTTP status code.
+     *
+     * @return self HTML response.
      */
     public static function html(string $body, int $statusCode = 200): self
     {
@@ -57,6 +73,11 @@ final readonly class Response
 
     /**
      * Build a redirect response using 303 by default for POST/redirect/GET.
+     *
+     * @param string $location Redirect target.
+     * @param int $statusCode Redirect status code.
+     *
+     * @return self Redirect response.
      */
     public static function redirect(string $location, int $statusCode = 303): self
     {
@@ -69,6 +90,8 @@ final readonly class Response
 
     /**
      * Emit the response through PHP's native HTTP output functions.
+     *
+     * @return void
      */
     public function send(): void
     {
@@ -83,6 +106,10 @@ final readonly class Response
 
     /**
      * @param array<string, mixed> $data
+     *
+     * @return string JSON encoded payload.
+     *
+     * @throws \JsonException When the payload cannot be encoded.
      */
     private static function encodeJson(array $data): string
     {
