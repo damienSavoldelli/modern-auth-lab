@@ -40,4 +40,13 @@ final class ResponseTest extends TestCase
             $response->headers,
         );
     }
+
+    public function testRedirectResponseSetsLocationHeader(): void
+    {
+        $response = Response::redirect('/account');
+
+        self::assertSame('', $response->body);
+        self::assertSame(303, $response->statusCode);
+        self::assertSame(['Location' => '/account'], $response->headers);
+    }
 }

@@ -41,6 +41,15 @@ final readonly class Response
         );
     }
 
+    public static function redirect(string $location, int $statusCode = 303): self
+    {
+        return new self(
+            '',
+            $statusCode,
+            ['Location' => $location],
+        );
+    }
+
     public function send(): void
     {
         http_response_code($this->statusCode);
