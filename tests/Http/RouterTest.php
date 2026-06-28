@@ -31,6 +31,17 @@ final class RouterTest extends TestCase
         self::assertSame(200, $response->statusCode);
     }
 
+    public function testDispatchesMatchingPostRoute(): void
+    {
+        $router = new Router();
+        $router->post('/login', static fn(): Response => Response::html('login posted'));
+
+        $response = $router->dispatch('POST', '/login');
+
+        self::assertSame(200, $response->statusCode);
+        self::assertSame('login posted', $response->body);
+    }
+
     public function testReturnsNotFoundForUnknownRoute(): void
     {
         $router = new Router();

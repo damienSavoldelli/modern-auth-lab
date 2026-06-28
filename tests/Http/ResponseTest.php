@@ -28,4 +28,16 @@ final class ResponseTest extends TestCase
         self::assertSame('{"error":"Not found"}', $response->body);
         self::assertSame(404, $response->statusCode);
     }
+
+    public function testHtmlResponseSetsContentType(): void
+    {
+        $response = Response::html('<h1>Login</h1>');
+
+        self::assertSame('<h1>Login</h1>', $response->body);
+        self::assertSame(200, $response->statusCode);
+        self::assertSame(
+            ['Content-Type' => 'text/html; charset=utf-8'],
+            $response->headers,
+        );
+    }
 }

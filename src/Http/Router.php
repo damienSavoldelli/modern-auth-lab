@@ -21,6 +21,14 @@ final class Router
         $this->routes['GET'][$this->normalizePath($path)] = $handler;
     }
 
+    /**
+     * @param Closure(): Response $handler
+     */
+    public function post(string $path, Closure $handler): void
+    {
+        $this->routes['POST'][$this->normalizePath($path)] = $handler;
+    }
+
     public function dispatch(string $method, string $path): Response
     {
         $normalizedMethod = strtoupper($method);
