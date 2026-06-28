@@ -25,11 +25,11 @@ Implemented foundation:
 - Protected `/account` route.
 - CSRF-protected logout.
 - Initial session-backed login rate limiting.
+- SQLite-backed basic security events.
 
 Not implemented yet:
 
 - CSRF middleware.
-- Security event logging.
 - TOTP.
 - Passkeys/WebAuthn.
 - Trusted devices.
