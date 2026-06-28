@@ -8,15 +8,27 @@ use ModernAuthLab\Http\Response;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Session\AuthSession;
 
+/**
+ * Displays the first authenticated-only account page.
+ *
+ * This controller is intentionally small: it demonstrates server-side route
+ * protection and issues the CSRF token used by logout.
+ */
 final readonly class AccountController
 {
     private const CSRF_TOKEN_ID = 'logout_form';
 
+    /**
+     * Receive the current auth session and CSRF manager for account rendering.
+     */
     public function __construct(
         private AuthSession $session,
         private CsrfTokenManager $csrf,
     ) {}
 
+    /**
+     * Show the account page or redirect anonymous/partial sessions to login.
+     */
     public function show(): Response
     {
         if (! $this->session->state()->isFullyAuthenticated()) {

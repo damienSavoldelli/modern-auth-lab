@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace ModernAuthLab\Http;
 
+/**
+ * Small immutable HTTP response value object.
+ *
+ * The project keeps HTTP primitives explicit instead of introducing a framework
+ * response stack at this stage.
+ */
 final readonly class Response
 {
     /**
@@ -16,6 +22,8 @@ final readonly class Response
     ) {}
 
     /**
+     * Build a JSON response with a strict UTF-8 JSON content type.
+     *
      * @param array<string, mixed> $data
      */
     public static function json(array $data, int $statusCode = 200): self
@@ -27,11 +35,17 @@ final readonly class Response
         );
     }
 
+    /**
+     * Build the default not-found response.
+     */
     public static function notFound(): self
     {
         return self::json(['error' => 'Not found'], 404);
     }
 
+    /**
+     * Build an HTML response.
+     */
     public static function html(string $body, int $statusCode = 200): self
     {
         return new self(
@@ -41,6 +55,9 @@ final readonly class Response
         );
     }
 
+    /**
+     * Build a redirect response using 303 by default for POST/redirect/GET.
+     */
     public static function redirect(string $location, int $statusCode = 303): self
     {
         return new self(
@@ -50,6 +67,9 @@ final readonly class Response
         );
     }
 
+    /**
+     * Emit the response through PHP's native HTTP output functions.
+     */
     public function send(): void
     {
         http_response_code($this->statusCode);

@@ -14,6 +14,13 @@ use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
 use ModernAuthLab\Session\AuthSession;
 
+/**
+ * Handles the password login form and current pre-MFA full-session transition.
+ *
+ * This controller coordinates several security concerns at the HTTP boundary:
+ * CSRF validation, login rate limiting, password verification, security event
+ * logging, session state transition, and session id rotation.
+ */
 final readonly class PasswordLoginController
 {
     private const CSRF_TOKEN_ID = 'login_form';
@@ -31,6 +38,9 @@ final readonly class PasswordLoginController
         private Closure $rotateSessionId,
     ) {}
 
+    /**
+     * Render a fresh login form with a CSRF token.
+     */
     public function show(): Response
     {
         $token = $this->csrf->issue(self::CSRF_TOKEN_ID);
@@ -39,6 +49,12 @@ final readonly class PasswordLoginController
     }
 
     /**
+     * Process password login submission.
+     *
+     * Successful password authentication currently creates a full session only
+     * because this is the pre-MFA milestone. Later MFA flows will split password
+     * verification from final authentication again.
+     *
      * @param array<string, mixed> $post
      */
     public function submit(array $post): Response
@@ -89,6 +105,12 @@ final readonly class PasswordLoginController
         return Response::redirect('/account');
     }
 
+    /**
+     * Re-render the login form with the generic failure message.
+     *
+     * The same message is used for invalid credentials and rate-limited attempts
+     * to avoid leaking account or policy state through the UI.
+     */
     private function failedLoginResponse(int $statusCode = 401): Response
     {
         $token = $this->csrf->issue(self::CSRF_TOKEN_ID);

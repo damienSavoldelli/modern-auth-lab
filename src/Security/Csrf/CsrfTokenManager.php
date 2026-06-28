@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace ModernAuthLab\Security\Csrf;
 
+/**
+ * Session-backed CSRF token manager.
+ *
+ * Tokens are bound to explicit token ids so each form/action can maintain its
+ * own token slot. Validation uses hash_equals to avoid timing-safe comparison
+ * mistakes in security-sensitive code.
+ */
 final class CsrfTokenManager
 {
     private const STORAGE_KEY = '_csrf_tokens';
@@ -16,6 +23,9 @@ final class CsrfTokenManager
         private array &$storage,
     ) {}
 
+    /**
+     * Issue a fresh token for the given form/action identifier.
+     */
     public function issue(string $tokenId): CsrfToken
     {
         $this->assertValidTokenId($tokenId);
@@ -26,6 +36,9 @@ final class CsrfTokenManager
         return new CsrfToken($tokenId, $value);
     }
 
+    /**
+     * Validate a submitted token without consuming it.
+     */
     public function validate(string $tokenId, ?string $submittedValue): void
     {
         $this->assertValidTokenId($tokenId);
@@ -41,6 +54,9 @@ final class CsrfTokenManager
         }
     }
 
+    /**
+     * Validate and then remove the token to model one-time unsafe actions.
+     */
     public function consume(string $tokenId, ?string $submittedValue): void
     {
         $this->validate($tokenId, $submittedValue);
@@ -48,6 +64,9 @@ final class CsrfTokenManager
         unset($this->tokens()[$tokenId]);
     }
 
+    /**
+     * Remove all CSRF tokens from the backing storage.
+     */
     public function clear(): void
     {
         unset($this->storage[self::STORAGE_KEY]);

@@ -7,6 +7,12 @@ namespace ModernAuthLab\Infrastructure\Persistence;
 use PDO;
 use Throwable;
 
+/**
+ * Executes pending migrations inside database transactions.
+ *
+ * A failed migration is rolled back and rethrown so startup cannot silently run
+ * on a partially migrated schema.
+ */
 final readonly class MigrationRunner
 {
     /**
@@ -18,6 +24,9 @@ final readonly class MigrationRunner
         private array $migrations,
     ) {}
 
+    /**
+     * Apply each pending migration exactly once.
+     */
     public function run(): void
     {
         $this->repository->ensureStorageExists();

@@ -7,12 +7,24 @@ namespace ModernAuthLab\Infrastructure\Persistence;
 use PDO;
 use RuntimeException;
 
+/**
+ * Opens the local SQLite connection used by the application.
+ *
+ * The factory centralizes PDO safety defaults so repositories do not need to
+ * configure error handling, fetch mode, prepared statements, or foreign keys.
+ */
 final readonly class SqliteConnectionFactory
 {
+    /**
+     * Receive the SQLite database configuration.
+     */
     public function __construct(
         private DatabaseConfig $config,
     ) {}
 
+    /**
+     * Create a configured PDO connection and ensure the database directory exists.
+     */
     public function connect(): PDO
     {
         $this->ensureDirectoryExists($this->config->path);

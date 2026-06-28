@@ -6,10 +6,19 @@ namespace ModernAuthLab\Session;
 
 use InvalidArgumentException;
 
+/**
+ * Validated PHP session cookie options.
+ *
+ * Defaults favor secure cookies. Local HTTP development can disable Secure via
+ * forRequest(false), while SameSite=None remains forbidden without Secure.
+ */
 final readonly class SessionCookieOptions
 {
     private const SAME_SITE_VALUES = ['Lax', 'Strict', 'None'];
 
+    /**
+     * Validate cookie policy before it is passed to PHP's session layer.
+     */
     public function __construct(
         public string $name = 'modern_auth_lab_session',
         public int $lifetime = 0,
@@ -36,12 +45,17 @@ final readonly class SessionCookieOptions
         }
     }
 
+    /**
+     * Build cookie options for the current request scheme.
+     */
     public static function forRequest(bool $isHttps): self
     {
         return new self(secure: $isHttps);
     }
 
     /**
+     * Convert options to the array shape expected by session_set_cookie_params.
+     *
      * @return array{lifetime: int, path: string, domain: string, secure: bool, httponly: bool, samesite: string}
      */
     public function toPhpCookieParams(): array

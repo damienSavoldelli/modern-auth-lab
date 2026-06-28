@@ -6,8 +6,17 @@ namespace ModernAuthLab\Infrastructure\Persistence;
 
 use InvalidArgumentException;
 
+/**
+ * Database connection configuration for the local SQLite runtime.
+ *
+ * Keeping the path in a value object makes it explicit which filesystem target
+ * a factory will open and lets tests validate invalid configuration early.
+ */
 final readonly class DatabaseConfig
 {
+    /**
+     * Validate the filesystem path used for the SQLite database.
+     */
     public function __construct(
         public string $path,
     ) {
@@ -16,6 +25,9 @@ final readonly class DatabaseConfig
         }
     }
 
+    /**
+     * Build the default local database path under the project runtime directory.
+     */
     public static function default(string $projectRoot): self
     {
         return new self(rtrim($projectRoot, DIRECTORY_SEPARATOR) . '/var/data/app.sqlite');

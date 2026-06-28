@@ -12,6 +12,12 @@ use ModernAuthLab\Security\Csrf\CsrfTokenException;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Session\AuthSession;
 
+/**
+ * Handles CSRF-protected logout.
+ *
+ * Logout changes server-side authentication state, so it is modeled as a POST
+ * action with CSRF validation rather than a GET link.
+ */
 final readonly class LogoutController
 {
     private const CSRF_TOKEN_ID = 'logout_form';
@@ -28,6 +34,8 @@ final readonly class LogoutController
     ) {}
 
     /**
+     * Validate logout intent, record the security event, and destroy the session.
+     *
      * @param array<string, mixed> $post
      */
     public function submit(array $post): Response

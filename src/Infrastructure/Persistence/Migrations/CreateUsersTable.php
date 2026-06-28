@@ -6,13 +6,25 @@ namespace ModernAuthLab\Infrastructure\Persistence\Migrations;
 
 use ModernAuthLab\Infrastructure\Persistence\Migration;
 
+/**
+ * Creates the users table used by password authentication.
+ *
+ * The table stores password hashes only. Plain passwords must remain outside
+ * persistence and are handled exclusively by password hashing services.
+ */
 final readonly class CreateUsersTable implements Migration
 {
+    /**
+     * Return the stable schema version for user persistence.
+     */
     public function version(): string
     {
         return '0002_create_users_table';
     }
 
+    /**
+     * Return SQL for users and their email lookup index.
+     */
     public function up(): string
     {
         return <<<'SQL'

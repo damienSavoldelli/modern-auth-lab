@@ -7,12 +7,24 @@ namespace ModernAuthLab\Infrastructure\Persistence;
 use ModernAuthLab\Domain\Security\SecurityEventType;
 use PDO;
 
+/**
+ * SQLite-backed repository for authentication security events.
+ *
+ * The repository records a narrow audit trail. It intentionally avoids secrets,
+ * tokens, session ids, and arbitrary request payloads.
+ */
 final readonly class SecurityEventRepository
 {
+    /**
+     * Receive the PDO connection used for audit persistence.
+     */
     public function __construct(
         private PDO $pdo,
     ) {}
 
+    /**
+     * Persist one security event.
+     */
     public function record(
         SecurityEventType $type,
         ?int $userId,

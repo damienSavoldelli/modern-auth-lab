@@ -6,9 +6,13 @@ namespace ModernAuthLab\Security\RateLimit;
 
 use Closure;
 
-// First-stage login throttling. It is intentionally session-backed so the
-// project can introduce brute-force controls before adding shared security
-// state or a distributed rate-limiting store.
+/**
+ * First-stage login throttling.
+ *
+ * It is intentionally session-backed so the project can introduce brute-force
+ * controls before adding shared security state or a distributed rate-limiting
+ * store.
+ */
 final class LoginRateLimiter
 {
     private const STORAGE_KEY = '_login_rate_limits';
@@ -25,6 +29,9 @@ final class LoginRateLimiter
         private ?Closure $now = null,
     ) {}
 
+    /**
+     * Check whether the identifier can attempt password authentication.
+     */
     public function isAllowed(string $identifier): bool
     {
         $record = $this->record($identifier);
@@ -39,6 +46,9 @@ final class LoginRateLimiter
         return count($this->recentAttempts($record, $now)) < $this->maxAttempts;
     }
 
+    /**
+     * Record one failed attempt and lock the identifier if the threshold is met.
+     */
     public function recordFailure(string $identifier): void
     {
         $now = $this->now();
@@ -54,6 +64,9 @@ final class LoginRateLimiter
         ];
     }
 
+    /**
+     * Remove limiter state after successful authentication.
+     */
     public function clear(string $identifier): void
     {
         unset($this->storage[self::STORAGE_KEY][$identifier]);
