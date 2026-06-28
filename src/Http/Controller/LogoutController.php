@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace ModernAuthLab\Http\Controller;
 
 use Closure;
+use ModernAuthLab\Application\Security\SecurityEventLogger;
+use ModernAuthLab\Domain\Security\SecurityEventType;
 use ModernAuthLab\Http\Response;
 use ModernAuthLab\Security\Csrf\CsrfTokenException;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
@@ -20,6 +22,8 @@ final readonly class LogoutController
     public function __construct(
         private AuthSession $session,
         private CsrfTokenManager $csrf,
+        private SecurityEventLogger $securityEvents,
+        private string $clientIp,
         private Closure $destroySession,
     ) {}
 
@@ -31,9 +35,22 @@ final readonly class LogoutController
         try {
             $this->csrf->consume(self::CSRF_TOKEN_ID, $this->stringValue($post['csrf_token'] ?? null));
         } catch (CsrfTokenException) {
+            $this->securityEvents->record(
+                SecurityEventType::LogoutCsrfFailed,
+                null,
+                null,
+                $this->clientIp,
+            );
+
             return Response::html('Invalid logout request.', 400);
         }
 
+        $this->securityEvents->record(
+            SecurityEventType::LogoutSucceeded,
+            null,
+            null,
+            $this->clientIp,
+        );
         $this->session->clearAuthentication();
         ($this->destroySession)();
 

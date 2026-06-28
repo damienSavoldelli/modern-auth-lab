@@ -8,10 +8,13 @@ use ModernAuthLab\Http\Controller\LogoutController;
 use ModernAuthLab\Http\Controller\PasswordLoginController;
 use ModernAuthLab\Http\Router;
 use ModernAuthLab\Application\Auth\PasswordAuthenticator;
+use ModernAuthLab\Application\Security\SecurityEventLogger;
 use ModernAuthLab\Infrastructure\Persistence\DatabaseConfig;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRunner;
+use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateSecurityEventsTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUsersTable;
+use ModernAuthLab\Infrastructure\Persistence\SecurityEventRepository;
 use ModernAuthLab\Infrastructure\Persistence\SqliteConnectionFactory;
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
@@ -19,6 +22,7 @@ use ModernAuthLab\Security\Password\PasswordHasher;
 use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
 use ModernAuthLab\Session\NativeSession;
 use ModernAuthLab\Session\SessionCookieOptions;
+use PDO;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
@@ -54,10 +58,13 @@ $router->get('/account', static function (): Response {
 
 $router->post('/logout', static function (): Response {
     [$nativeSession, $authSession] = createSessionContext();
+    $pdo = createApplicationConnection();
 
     $controller = new LogoutController(
         $authSession,
         new CsrfTokenManager($_SESSION),
+        new SecurityEventLogger(new SecurityEventRepository($pdo)),
+        clientIp(),
         static fn() => $nativeSession->destroy(),
     );
 
@@ -76,10 +83,7 @@ $router->dispatch($method, $path)->send();
 function createPasswordLoginController(): PasswordLoginController
 {
     [$nativeSession, $authSession] = createSessionContext();
-
-    $pdo = (new SqliteConnectionFactory(DatabaseConfig::default(dirname(__DIR__))))->connect();
-    $migrationRepository = new MigrationRepository($pdo);
-    (new MigrationRunner($pdo, $migrationRepository, [new CreateUsersTable()]))->run();
+    $pdo = createApplicationConnection();
 
     return new PasswordLoginController(
         new CsrfTokenManager($_SESSION),
@@ -89,9 +93,22 @@ function createPasswordLoginController(): PasswordLoginController
         ),
         $authSession,
         new LoginRateLimiter($_SESSION),
+        new SecurityEventLogger(new SecurityEventRepository($pdo)),
         clientIp(),
         static fn() => $nativeSession->rotateId(),
     );
+}
+
+function createApplicationConnection(): PDO
+{
+    $pdo = (new SqliteConnectionFactory(DatabaseConfig::default(dirname(__DIR__))))->connect();
+    $migrationRepository = new MigrationRepository($pdo);
+    (new MigrationRunner($pdo, $migrationRepository, [
+        new CreateUsersTable(),
+        new CreateSecurityEventsTable(),
+    ]))->run();
+
+    return $pdo;
 }
 
 /**
