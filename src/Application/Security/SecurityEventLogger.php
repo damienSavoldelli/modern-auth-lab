@@ -19,6 +19,8 @@ final readonly class SecurityEventLogger
         ?string $email,
         string $clientIp,
     ): void {
+        // Normalize at the application boundary so controllers do not duplicate
+        // security-event hygiene rules before persistence.
         $this->events->record(
             $type,
             $userId,

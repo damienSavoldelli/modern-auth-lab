@@ -19,6 +19,8 @@ final readonly class SecurityEventRepository
         ?string $email,
         string $clientIp,
     ): void {
+        // Keep the first audit trail deliberately small: no secrets, no tokens,
+        // no raw request payloads, and no free-form metadata yet.
         $statement = $this->pdo->prepare(
             'INSERT INTO security_events (type, user_id, email, client_ip)
                 VALUES (:type, :user_id, :email, :client_ip)',
@@ -32,6 +34,9 @@ final readonly class SecurityEventRepository
     }
 
     /**
+     * Intended for tests and local inspection while the project has no security
+     * event query use case. Production-facing queries should be explicit.
+     *
      * @return list<array<string, mixed>>
      */
     public function all(): array

@@ -16,6 +16,9 @@ final readonly class CreateSecurityEventsTable implements Migration
     public function up(): string
     {
         return <<<'SQL'
+            -- Minimal audit schema for authentication-sensitive events.
+            -- Payloads stay intentionally narrow until retention and privacy
+            -- rules are defined.
             CREATE TABLE IF NOT EXISTS security_events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 type TEXT NOT NULL,
