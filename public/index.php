@@ -16,6 +16,7 @@ use ModernAuthLab\Infrastructure\Persistence\SqliteConnectionFactory;
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\Password\PasswordHasher;
+use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
 use ModernAuthLab\Session\NativeSession;
 use ModernAuthLab\Session\SessionCookieOptions;
 
@@ -87,6 +88,8 @@ function createPasswordLoginController(): PasswordLoginController
             new PasswordHasher(),
         ),
         $authSession,
+        new LoginRateLimiter($_SESSION),
+        clientIp(),
         static fn() => $nativeSession->rotateId(),
     );
 }
@@ -107,4 +110,11 @@ function isHttpsRequest(): bool
     $https = $_SERVER['HTTPS'] ?? '';
 
     return $https === 'on' || $https === '1';
+}
+
+function clientIp(): string
+{
+    $remoteAddress = $_SERVER['REMOTE_ADDR'] ?? '';
+
+    return is_string($remoteAddress) && $remoteAddress !== '' ? $remoteAddress : 'unknown';
 }

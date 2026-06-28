@@ -12,6 +12,7 @@ use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUsersTable;
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\Password\PasswordHasher;
+use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
 use ModernAuthLab\Session\AuthSession;
 use ModernAuthLab\Session\AuthSessionState;
 use PDO;
@@ -89,6 +90,37 @@ final class PasswordLoginControllerTest extends TestCase
         self::assertSame(AuthSessionState::Anonymous, (new AuthSession($storage))->state());
     }
 
+    public function testRateLimitsRepeatedInvalidPasswordAttempts(): void
+    {
+        $storage = [];
+        $rotated = false;
+        $controller = $this->createController($storage, static function () use (&$rotated): void {
+            $rotated = true;
+        });
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $token = (new CsrfTokenManager($storage))->issue('login_form');
+
+            $controller->submit([
+                'csrf_token' => $token->value,
+                'email' => 'user@example.com',
+                'password' => 'wrong password',
+            ]);
+        }
+
+        $token = (new CsrfTokenManager($storage))->issue('login_form');
+        $response = $controller->submit([
+            'csrf_token' => $token->value,
+            'email' => 'user@example.com',
+            'password' => 'correct password',
+        ]);
+
+        self::assertSame(429, $response->statusCode);
+        self::assertSame(AuthSessionState::Anonymous, (new AuthSession($storage))->state());
+        self::assertFalse($rotated);
+        self::assertStringContainsString('Invalid credentials.', $response->body);
+    }
+
     /**
      * @param array<string, mixed> $storage
      */
@@ -102,6 +134,8 @@ final class PasswordLoginControllerTest extends TestCase
             new CsrfTokenManager($storage),
             new PasswordAuthenticator($users, $passwords),
             new AuthSession($storage),
+            new LoginRateLimiter($storage),
+            '127.0.0.1',
             $rotateSessionId ?? static function (): void {},
         );
     }
