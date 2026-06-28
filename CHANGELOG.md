@@ -4,6 +4,36 @@ All notable changes to Modern Auth Lab will be documented in this file.
 
 The format follows Keep a Changelog conventions, and this project uses semantic versioning for project milestones.
 
+## [0.4.0] - 2026-06-28
+
+### Added
+
+- Added password-only full session login for the current pre-MFA milestone.
+- Added redirect to `/account` after successful password authentication.
+- Added protected `GET /account` route.
+- Added CSRF-protected `POST /logout`.
+- Added session destruction after logout.
+- Added initial session-backed login rate limiting.
+- Added SQLite-backed `security_events` table.
+- Added security event logging for password login success, password login failure, logout success, and invalid logout CSRF attempts.
+- Added ADRs for full session login, initial login rate limiting, and basic security events.
+
+### Changed
+
+- Updated the login flow from partial `password_verified` state to temporary `fully_authenticated` state for this pre-MFA milestone.
+- Updated README with full session login, rate limiting, and security event status.
+
+### Not Included Yet
+
+- TOTP.
+- Passkeys/WebAuthn.
+- Trusted devices.
+- Recovery flows.
+- CSRF middleware.
+- Distributed or database-backed rate limiting.
+- Security event retention policy.
+- CI/CD.
+
 ## [0.3.0] - 2026-06-28
 
 ### Added
@@ -112,6 +142,7 @@ The format follows Keep a Changelog conventions, and this project uses semantic 
 - SQLite/libSQL persistence.
 - CI/CD.
 
+[0.4.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.4.0
 [0.3.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.3.0
 [0.2.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.2.0
 [0.1.1]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.1.1
