@@ -32,7 +32,7 @@ final class PasswordLoginControllerTest extends TestCase
         self::assertArrayHasKey('_csrf_tokens', $storage);
     }
 
-    public function testMarksPasswordVerifiedAndRotatesSessionOnSuccess(): void
+    public function testMarksFullyAuthenticatedAndRotatesSessionOnSuccess(): void
     {
         $storage = [];
         $rotated = false;
@@ -47,8 +47,9 @@ final class PasswordLoginControllerTest extends TestCase
             'password' => 'correct password',
         ]);
 
-        self::assertSame(200, $response->statusCode);
-        self::assertSame(AuthSessionState::PasswordVerified, (new AuthSession($storage))->state());
+        self::assertSame(303, $response->statusCode);
+        self::assertSame(['Location' => '/account'], $response->headers);
+        self::assertSame(AuthSessionState::FullyAuthenticated, (new AuthSession($storage))->state());
         self::assertTrue($rotated);
     }
 

@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use ModernAuthLab\Http\Response;
+use ModernAuthLab\Http\Controller\AccountController;
+use ModernAuthLab\Http\Controller\LogoutController;
 use ModernAuthLab\Http\Controller\PasswordLoginController;
 use ModernAuthLab\Http\Router;
 use ModernAuthLab\Application\Auth\PasswordAuthenticator;
@@ -38,6 +40,29 @@ $router->post('/login', static function (): Response {
     return $controller->submit($_POST);
 });
 
+$router->get('/account', static function (): Response {
+    [, $authSession] = createSessionContext();
+
+    $controller = new AccountController(
+        $authSession,
+        new CsrfTokenManager($_SESSION),
+    );
+
+    return $controller->show();
+});
+
+$router->post('/logout', static function (): Response {
+    [$nativeSession, $authSession] = createSessionContext();
+
+    $controller = new LogoutController(
+        $authSession,
+        new CsrfTokenManager($_SESSION),
+        static fn() => $nativeSession->destroy(),
+    );
+
+    return $controller->submit($_POST);
+});
+
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
@@ -49,9 +74,7 @@ $router->dispatch($method, $path)->send();
 
 function createPasswordLoginController(): PasswordLoginController
 {
-    $nativeSession = new NativeSession();
-    $nativeSession->configure(SessionCookieOptions::forRequest(isHttpsRequest()));
-    $authSession = $nativeSession->auth();
+    [$nativeSession, $authSession] = createSessionContext();
 
     $pdo = (new SqliteConnectionFactory(DatabaseConfig::default(dirname(__DIR__))))->connect();
     $migrationRepository = new MigrationRepository($pdo);
@@ -66,6 +89,17 @@ function createPasswordLoginController(): PasswordLoginController
         $authSession,
         static fn() => $nativeSession->rotateId(),
     );
+}
+
+/**
+ * @return array{0: NativeSession, 1: \ModernAuthLab\Session\AuthSession}
+ */
+function createSessionContext(): array
+{
+    $nativeSession = new NativeSession();
+    $nativeSession->configure(SessionCookieOptions::forRequest(isHttpsRequest()));
+
+    return [$nativeSession, $nativeSession->auth()];
 }
 
 function isHttpsRequest(): bool

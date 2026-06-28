@@ -52,10 +52,10 @@ final readonly class PasswordLoginController
             return $this->failedLoginResponse();
         }
 
-        $this->session->markPasswordVerified();
+        $this->session->markFullyAuthenticated();
         ($this->rotateSessionId)();
 
-        return Response::html('Password verified. MFA is required before full authentication.');
+        return Response::redirect('/account');
     }
 
     private function failedLoginResponse(): Response
