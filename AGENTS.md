@@ -186,6 +186,7 @@ Backend commands:
 - Run backend static analysis: `composer analyse`
 - Check backend code style: `composer cs:check`
 - Fix backend code style: `composer cs:fix`
+- Create local development user: `composer seed:dev-user`
 
 Frontend commands:
 

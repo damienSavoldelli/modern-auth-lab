@@ -77,6 +77,19 @@ composer analyse
 composer cs:check
 ```
 
+Create a local development user:
+
+```bash
+composer seed:dev-user
+```
+
+Development credentials:
+
+```text
+Email: dev@example.com
+Password: DevPassword123!
+```
+
 ## Frontend Commands
 
 Start the Vite development server:
