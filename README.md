@@ -150,6 +150,9 @@ Start with:
 - [Authentication flows](docs/auth-flows.md)
 - [Passkeys and WebAuthn](docs/passkeys.md)
 - [Fallback strategy](docs/fallback-strategy.md)
+- [Security concepts](docs/concepts/README.md)
+- [TOTP concept note](docs/concepts/totp.md)
+- [v0.5.0 TOTP foundation implementation notes](docs/implementation-notes/v0.5-totp-foundation.md)
 - [Decision records](docs/decisions/README.md)
 
 ## Versioning
