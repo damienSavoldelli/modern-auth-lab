@@ -86,6 +86,25 @@ The agent is not responsible for:
 - Do not continue to a new roadmap phase without explicit validation.
 - For roadmap work, follow the Delivery Workflow before editing files.
 
+## Pedagogical Documentation Workflow
+
+Security-sensitive milestones such as TOTP, Passkeys/WebAuthn, MFA fallback, recovery, trusted devices, and security event handling must be treated as teaching material as well as implementation work.
+
+For these milestones, the agent must:
+
+- Explain the objective before implementation.
+- Explain the security model, assets, trust boundaries, and threat assumptions.
+- Explain where the work happens in the codebase before editing files.
+- Break the work into small conceptual steps that the user can reproduce.
+- Explain each important implementation step before moving to the next one.
+- Add professional PHPDoc and meaningful comments for new security-sensitive code.
+- Update project documentation with reusable technical explanations.
+- Include reliable sources when useful, preferring primary standards and established security references.
+- After each major concept or implementation block, ask the user whether the explanation is clear before continuing.
+- Avoid moving to the next conceptual block until the user validates or asks to proceed.
+
+Documentation created for these milestones should support future technical articles. It should capture not only what was implemented, but also why the design was chosen, what was deferred, and which security tradeoffs remain.
+
 ## Delivery Workflow
 
 Default delivery flow for roadmap work:
