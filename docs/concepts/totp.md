@@ -35,6 +35,30 @@ The distinction matters:
 - compromising the secret compromises all future codes;
 - compromising one code should only affect a short time window.
 
+## Simple Mental Model
+
+Think about the TOTP flow in three different layers:
+
+```text
+Base32      = text format used to transport/display the secret
+TotpSecret  = server-side object that represents an acceptable shared secret
+TOTP code   = short six-digit code generated later from the secret + current time
+```
+
+What has been implemented first in `v0.5.0`:
+
+- `Base32`, because authenticator apps expect secrets in this format;
+- `TotpSecret`, because the project needs a safe object for generating and validating shared secrets.
+
+What has not been implemented yet:
+
+- the `otpauth://` URI;
+- the QR code;
+- the six-digit TOTP code calculation;
+- the submitted-code verification flow.
+
+So Base32 and `TotpSecret` are not the login code shown by the authenticator app. They are the foundation that allows the app and the server to share the same secret before codes can be generated.
+
 ## The `otpauth://` URI
 
 Authenticator apps commonly understand URIs shaped like this:
@@ -53,6 +77,174 @@ The URI tells the app:
 - the time period.
 
 The QR code shown during enrollment is a visual encoding of this URI.
+
+The URI is not the QR code itself. The QR code is only a visual container that encodes this URI so the authenticator app can read it.
+
+The provisioning chain is:
+
+```text
+TotpSecret
+    -> Base32
+    -> otpauth:// URI
+    -> QR code
+    -> authenticator app
+```
+
+With the default project settings, the URI communicates:
+
+```text
+Type        = TOTP
+Service     = Modern Auth Lab
+Account     = dev@example.com
+Secret      = Base32 shared secret
+Algorithm   = SHA1
+Digits      = 6
+Period      = 30 seconds
+```
+
+The project keeps these values configurable:
+
+- `issuer`, the service/provider shown by the app;
+- `accountLabel`, the account shown by the app;
+- `algorithm`, currently allowed as `SHA1`, `SHA256`, or `SHA512`;
+- `digits`, currently allowed as `6` or `8`;
+- `period`, the code validity period in seconds.
+
+Defaulting to `SHA1`, `6` digits, and `30` seconds is a compatibility choice. SHA1 is not recommended for new general-purpose signatures, but TOTP commonly uses HMAC-SHA1 with a shared secret and short time window. The class remains configurable so stronger algorithms can be tested without changing the provisioning model.
+
+## Code Generation
+
+TOTP code generation is deterministic.
+
+The authenticator app and the server do not communicate when a code is generated. They independently compute the same code because they share:
+
+- the same secret;
+- the same algorithm;
+- the same number of digits;
+- the same period;
+- approximately the same time.
+
+Conceptually:
+
+```text
+TOTP code = function(secret, current time, algorithm, digits, period)
+```
+
+TOTP is based on HOTP:
+
+```text
+HOTP = secret + counter
+TOTP = secret + time-derived counter
+```
+
+For TOTP, the counter is:
+
+```text
+counter = floor(timestamp / period)
+```
+
+With the common 30-second period, every timestamp in the same 30-second time step produces the same code.
+
+This project generates codes as strings, not integers, because leading zeroes are valid:
+
+```text
+000123
+```
+
+## Code Verification Window
+
+TOTP verification usually accepts a small clock window.
+
+With:
+
+```text
+window = 1
+```
+
+the server checks:
+
+```text
+currentStep - 1
+currentStep
+currentStep + 1
+```
+
+In other words:
+
+- previous step;
+- current step;
+- next step.
+
+If the period is 30 seconds, this tolerates approximately:
+
+```text
+30 seconds before
+30 seconds after
+```
+
+Important: this does not mean the same code is valid for exactly 90 seconds. It means the server accepts codes calculated for three possible time steps.
+
+Example:
+
+```text
+period = 30
+window = 1
+server timestamp = 12:00:31
+currentStep = floor(timestamp / 30)
+```
+
+The server tests:
+
+- code for the previous step;
+- code for the current step;
+- code for the next step.
+
+This is useful when:
+
+- the phone clock is slightly behind;
+- the server clock is slightly ahead;
+- the user submits a code close to the moment it expires.
+
+The window should stay small:
+
+- with `window = 2`, the server accepts 5 steps;
+- with `window = 3`, the server accepts 7 steps;
+- the brute-force surface increases as the number of accepted steps grows.
+
+For this project, `window = 1` is the default compromise: understandable, realistic, and still narrow.
+
+## Per-Enrollment Parameters
+
+The TOTP parameters used during enrollment must be treated as part of that enrollment.
+
+When the user scans the QR code, the authenticator app stores:
+
+- the shared secret;
+- the algorithm;
+- the number of digits;
+- the period.
+
+The app does not automatically learn future server-side policy changes.
+
+This means the server must later verify codes with the same parameters that were active when the user enrolled. If a user enrolled with:
+
+```text
+Algorithm = SHA1
+Digits    = 6
+Period    = 30
+```
+
+the server must continue verifying that user's TOTP codes with `SHA1`, `6`, and `30` until the user completes a controlled migration or replacement flow.
+
+Changing a global TOTP policy abruptly can lock users out:
+
+```text
+app still generates SHA1 / 6 / 30
+server suddenly expects SHA512 / 8 / 60
+result: codes no longer match
+```
+
+Future persistence must therefore store TOTP parameters with the enrollment record, not rely only on a global configuration.
 
 ## Multi-Device Behavior
 
