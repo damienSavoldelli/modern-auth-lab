@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace ModernAuthLab\Tests\Http\Controller;
 
+use ModernAuthLab\Application\Security\SecurityEventLogger;
 use ModernAuthLab\Application\Totp\TotpEnrollmentService;
 use ModernAuthLab\Application\Totp\TotpLoginVerificationService;
+use ModernAuthLab\Domain\Security\SecurityEventType;
 use ModernAuthLab\Http\Controller\TotpChallengeController;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRunner;
+use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateSecurityEventsTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUsersTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUserTotpCredentialsTable;
+use ModernAuthLab\Infrastructure\Persistence\SecurityEventRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
@@ -34,6 +38,7 @@ final class TotpChallengeControllerTest extends TestCase
             new CsrfTokenManager($storage),
             $this->verificationService(),
             $this->rateLimiter($storage),
+            $this->securityEventLogger(),
             '127.0.0.1',
             static function (): void {},
         );
@@ -54,6 +59,7 @@ final class TotpChallengeControllerTest extends TestCase
             new CsrfTokenManager($storage),
             $this->verificationService(),
             $this->rateLimiter($storage),
+            $this->securityEventLogger(),
             '127.0.0.1',
             static function (): void {},
         );
@@ -74,6 +80,7 @@ final class TotpChallengeControllerTest extends TestCase
             new CsrfTokenManager($storage),
             $this->verificationService(),
             $this->rateLimiter($storage),
+            $this->securityEventLogger(),
             '127.0.0.1',
             static function (): void {},
         );
@@ -94,6 +101,7 @@ final class TotpChallengeControllerTest extends TestCase
             new CsrfTokenManager($storage),
             $this->verificationService(),
             $this->rateLimiter($storage),
+            $this->securityEventLogger(),
             '127.0.0.1',
             static function (): void {},
         );
@@ -116,6 +124,7 @@ final class TotpChallengeControllerTest extends TestCase
             new CsrfTokenManager($storage),
             $this->verificationService(),
             $this->rateLimiter($storage),
+            $this->securityEventLogger(),
             '127.0.0.1',
             static function (): void {},
         );
@@ -139,6 +148,7 @@ final class TotpChallengeControllerTest extends TestCase
             new CsrfTokenManager($storage),
             $this->verificationService(),
             $this->rateLimiter($storage),
+            $this->securityEventLogger(),
             '127.0.0.1',
             static function (): void {},
         );
@@ -156,14 +166,17 @@ final class TotpChallengeControllerTest extends TestCase
     public function testRejectsInvalidTotpCode(): void
     {
         $storage = [];
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
         $session = new AuthSession($storage);
-        $session->markMfaPending(123, 'user@example.com');
+        $session->markMfaPending($user->id, $user->email);
         $csrf = new CsrfTokenManager($storage);
         $controller = new TotpChallengeController(
             $session,
             $csrf,
             $this->verificationService(),
             $this->rateLimiter($storage),
+            new SecurityEventLogger(new SecurityEventRepository($pdo)),
             '127.0.0.1',
             static function (): void {},
         );
@@ -177,6 +190,38 @@ final class TotpChallengeControllerTest extends TestCase
         self::assertSame(400, $response->statusCode);
         self::assertStringContainsString('Invalid authenticator code.', $response->body);
         self::assertSame(AuthSessionState::MfaPending, $session->state());
+    }
+
+    public function testRecordsSecurityEventAfterInvalidTotpCode(): void
+    {
+        $storage = [];
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $events = new SecurityEventRepository($pdo);
+        $session = new AuthSession($storage);
+        $session->markMfaPending($user->id, 'USER@example.COM');
+        $csrf = new CsrfTokenManager($storage);
+        $controller = new TotpChallengeController(
+            $session,
+            $csrf,
+            $this->verificationService(),
+            $this->rateLimiter($storage),
+            new SecurityEventLogger($events),
+            '127.0.0.1',
+            static function (): void {},
+        );
+        $token = $csrf->issue('totp_challenge_form');
+
+        $controller->submit([
+            'csrf_token' => $token->value,
+            'code' => '123456',
+        ]);
+
+        self::assertSame(SecurityEventType::TotpChallengeFailed->value, $events->all()[0]['type']);
+        self::assertSame($user->id, $events->all()[0]['user_id']);
+        self::assertSame('user@example.com', $events->all()[0]['email']);
+        self::assertSame('127.0.0.1', $events->all()[0]['client_ip']);
+        self::assertStringNotContainsString('123456', json_encode($events->all(), JSON_THROW_ON_ERROR));
     }
 
     public function testMarksFullyAuthenticatedAndRotatesSessionAfterValidTotpCode(): void
@@ -196,6 +241,7 @@ final class TotpChallengeControllerTest extends TestCase
             $csrf,
             new TotpLoginVerificationService($credentials, $secretProtector),
             $this->rateLimiter($storage),
+            new SecurityEventLogger(new SecurityEventRepository($pdo)),
             '127.0.0.1',
             static function () use (&$rotated): void {
                 $rotated = true;
@@ -220,14 +266,17 @@ final class TotpChallengeControllerTest extends TestCase
     public function testRateLimitsRepeatedInvalidTotpCodes(): void
     {
         $storage = [];
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
         $session = new AuthSession($storage);
-        $session->markMfaPending(123, 'user@example.com');
+        $session->markMfaPending($user->id, $user->email);
         $csrf = new CsrfTokenManager($storage);
         $controller = new TotpChallengeController(
             $session,
             $csrf,
             $this->verificationService(),
             $this->rateLimiter($storage, maxAttempts: 2),
+            new SecurityEventLogger(new SecurityEventRepository($pdo)),
             '127.0.0.1',
             static function (): void {},
         );
@@ -251,6 +300,40 @@ final class TotpChallengeControllerTest extends TestCase
         self::assertSame(AuthSessionState::MfaPending, $session->state());
     }
 
+    public function testRecordsSecurityEventWhenTotpChallengeIsRateLimited(): void
+    {
+        $storage = [];
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $events = new SecurityEventRepository($pdo);
+        $session = new AuthSession($storage);
+        $session->markMfaPending($user->id, $user->email);
+        $csrf = new CsrfTokenManager($storage);
+        $controller = new TotpChallengeController(
+            $session,
+            $csrf,
+            $this->verificationService(),
+            $this->rateLimiter($storage, maxAttempts: 1),
+            new SecurityEventLogger($events),
+            '127.0.0.1',
+            static function (): void {},
+        );
+        $firstToken = $csrf->issue('totp_challenge_form');
+        $controller->submit([
+            'csrf_token' => $firstToken->value,
+            'code' => '123456',
+        ]);
+        $secondToken = $csrf->issue('totp_challenge_form');
+
+        $controller->submit([
+            'csrf_token' => $secondToken->value,
+            'code' => '123456',
+        ]);
+
+        self::assertSame(SecurityEventType::TotpChallengeFailed->value, $events->all()[0]['type']);
+        self::assertSame(SecurityEventType::TotpChallengeRateLimited->value, $events->all()[1]['type']);
+    }
+
     public function testClearsTotpRateLimitAfterSuccessfulChallenge(): void
     {
         $storage = [];
@@ -268,6 +351,7 @@ final class TotpChallengeControllerTest extends TestCase
             $csrf,
             new TotpLoginVerificationService($credentials, $secretProtector),
             $this->rateLimiter($storage, maxAttempts: 2),
+            new SecurityEventLogger(new SecurityEventRepository($pdo)),
             '127.0.0.1',
             static function () use (&$rotated): void {
                 $rotated = true;
@@ -292,12 +376,52 @@ final class TotpChallengeControllerTest extends TestCase
         self::assertTrue($this->rateLimiter($storage, maxAttempts: 2)->isAllowed($this->rateLimitIdentifier($user->id)));
     }
 
+    public function testRecordsSecurityEventAfterSuccessfulTotpCode(): void
+    {
+        $storage = [];
+        $pdo = $this->createMigratedConnection();
+        $events = new SecurityEventRepository($pdo);
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $credentials = new UserTotpCredentialRepository($pdo);
+        $secretProtector = new TotpSecretProtector(str_repeat('a', 32), 'local');
+        $secret = $this->activateTotp($credentials, $secretProtector, $user->id, $user->email);
+        $session = new AuthSession($storage);
+        $session->markMfaPending($user->id, $user->email);
+        $csrf = new CsrfTokenManager($storage);
+        $controller = new TotpChallengeController(
+            $session,
+            $csrf,
+            new TotpLoginVerificationService($credentials, $secretProtector),
+            $this->rateLimiter($storage),
+            new SecurityEventLogger($events),
+            '127.0.0.1',
+            static function (): void {},
+        );
+        $token = $csrf->issue('totp_challenge_form');
+        $code = (new TotpGenerator())->generate($secret, time());
+
+        $controller->submit([
+            'csrf_token' => $token->value,
+            'code' => $code,
+        ]);
+
+        self::assertSame(SecurityEventType::TotpChallengeSucceeded->value, $events->all()[0]['type']);
+        self::assertSame($user->id, $events->all()[0]['user_id']);
+        self::assertSame($user->email, $events->all()[0]['email']);
+        self::assertStringNotContainsString($code, json_encode($events->all(), JSON_THROW_ON_ERROR));
+    }
+
     private function verificationService(): TotpLoginVerificationService
     {
         return new TotpLoginVerificationService(
             new UserTotpCredentialRepository($this->createMigratedConnection()),
             new TotpSecretProtector(str_repeat('a', 32), 'local'),
         );
+    }
+
+    private function securityEventLogger(): SecurityEventLogger
+    {
+        return new SecurityEventLogger(new SecurityEventRepository($this->createMigratedConnection()));
     }
 
     /**
@@ -344,6 +468,7 @@ final class TotpChallengeControllerTest extends TestCase
 
         $runner = new MigrationRunner($pdo, new MigrationRepository($pdo), [
             new CreateUsersTable(),
+            new CreateSecurityEventsTable(),
             new CreateUserTotpCredentialsTable(),
         ]);
         $runner->run();

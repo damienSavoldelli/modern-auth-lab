@@ -14,6 +14,9 @@ enum SecurityEventType: string
 {
     case PasswordLoginSucceeded = 'password_login_succeeded';
     case PasswordLoginFailed = 'password_login_failed';
+    case TotpChallengeSucceeded = 'totp_challenge_succeeded';
+    case TotpChallengeFailed = 'totp_challenge_failed';
+    case TotpChallengeRateLimited = 'totp_challenge_rate_limited';
     case LogoutSucceeded = 'logout_succeeded';
     case LogoutCsrfFailed = 'logout_csrf_failed';
 }

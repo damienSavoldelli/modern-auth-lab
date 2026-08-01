@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace ModernAuthLab\Http\Controller;
 
 use Closure;
+use ModernAuthLab\Application\Security\SecurityEventLogger;
 use ModernAuthLab\Application\Totp\TotpLoginVerificationService;
+use ModernAuthLab\Domain\Security\SecurityEventType;
 use ModernAuthLab\Http\Response;
 use ModernAuthLab\Security\Csrf\CsrfTokenException;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
@@ -29,6 +31,7 @@ final readonly class TotpChallengeController
      * @param CsrfTokenManager $csrf CSRF token manager for challenge submission.
      * @param TotpLoginVerificationService $verification TOTP login verification service.
      * @param TotpChallengeRateLimiter $rateLimiter TOTP challenge throttling control.
+     * @param SecurityEventLogger $securityEvents Audit logger for TOTP challenge events.
      * @param string $clientIp Server-observed client IP.
      * @param Closure(): void $rotateSessionId Session id rotation callback.
      */
@@ -37,6 +40,7 @@ final readonly class TotpChallengeController
         private CsrfTokenManager $csrf,
         private TotpLoginVerificationService $verification,
         private TotpChallengeRateLimiter $rateLimiter,
+        private SecurityEventLogger $securityEvents,
         private string $clientIp,
         private Closure $rotateSessionId,
     ) {}
@@ -85,17 +89,36 @@ final readonly class TotpChallengeController
 
         $rateLimitIdentifier = $this->rateLimitIdentifier($userId);
         if (! $this->rateLimiter->isAllowed($rateLimitIdentifier)) {
+            $this->securityEvents->record(
+                SecurityEventType::TotpChallengeRateLimited,
+                $userId,
+                $email,
+                $this->clientIp,
+            );
+
             return $this->failedChallengeResponse(429, 'Too many attempts. Try again later.');
         }
 
         $result = $this->verification->verify($userId, $this->stringValue($post['code'] ?? null));
         if (! $result->success) {
             $this->rateLimiter->recordFailure($rateLimitIdentifier);
+            $this->securityEvents->record(
+                SecurityEventType::TotpChallengeFailed,
+                $userId,
+                $email,
+                $this->clientIp,
+            );
 
             return $this->failedChallengeResponse();
         }
 
         $this->rateLimiter->clear($rateLimitIdentifier);
+        $this->securityEvents->record(
+            SecurityEventType::TotpChallengeSucceeded,
+            $userId,
+            $email,
+            $this->clientIp,
+        );
         $this->session->markFullyAuthenticated($userId, $email);
         ($this->rotateSessionId)();
 

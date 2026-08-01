@@ -218,6 +218,7 @@ function createTotpChallengeController(): TotpChallengeController
             $totpConfig->protector(),
         ),
         new TotpChallengeRateLimiter($_SESSION, $rateLimitConfig),
+        new SecurityEventLogger(new SecurityEventRepository($pdo)),
         clientIp(),
         static fn() => $nativeSession->rotateId(),
     );
