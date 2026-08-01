@@ -6,6 +6,8 @@ namespace ModernAuthLab\Tests\Http\Controller;
 
 use ModernAuthLab\Application\Security\SecurityEventLogger;
 use ModernAuthLab\Application\Totp\TotpDisableService;
+use ModernAuthLab\Application\Totp\TotpLoginVerificationService;
+use ModernAuthLab\Application\Totp\TotpRecoveryCodeService;
 use ModernAuthLab\Domain\Security\SecurityEventType;
 use ModernAuthLab\Http\Controller\AccountSecurityController;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
@@ -13,11 +15,15 @@ use ModernAuthLab\Infrastructure\Persistence\MigrationRunner;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateSecurityEventsTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUsersTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUserTotpCredentialsTable;
+use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUserTotpRecoveryCodesTable;
 use ModernAuthLab\Infrastructure\Persistence\SecurityEventRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
+use ModernAuthLab\Infrastructure\Persistence\UserTotpRecoveryCodeRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\Totp\TotpGenerator;
+use ModernAuthLab\Security\Totp\TotpRecoveryCodeGenerator;
+use ModernAuthLab\Security\Totp\TotpRecoveryCodeHasher;
 use ModernAuthLab\Security\Totp\TotpSecret;
 use ModernAuthLab\Security\Totp\TotpSecretProtector;
 use ModernAuthLab\Session\AuthSession;
@@ -103,7 +109,13 @@ final class AccountSecurityControllerTest extends TestCase
         self::assertStringContainsString('name="csrf_token"', $response->body);
         self::assertStringContainsString('Current authenticator code', $response->body);
         self::assertStringContainsString('Disable TOTP', $response->body);
+        self::assertStringContainsString(
+            '<form method="post" action="/account/security/totp/recovery-codes/generate">',
+            $response->body,
+        );
+        self::assertStringContainsString('Generate recovery codes', $response->body);
         self::assertArrayHasKey('totp_disable_form', $storage['_csrf_tokens']);
+        self::assertArrayHasKey('totp_recovery_codes_form', $storage['_csrf_tokens']);
         self::assertStringNotContainsString('encrypted-secret', $response->body);
         self::assertStringNotContainsString('secret-nonce', $response->body);
         self::assertStringNotContainsString('local-key', $response->body);
@@ -202,6 +214,72 @@ final class AccountSecurityControllerTest extends TestCase
         self::assertStringNotContainsString($code, json_encode($events->all(), JSON_THROW_ON_ERROR));
     }
 
+    public function testRejectsRecoveryCodeGenerationWithInvalidCodeAndRecordsEvent(): void
+    {
+        $storage = [];
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $session = new AuthSession($storage);
+        $session->markFullyAuthenticated($user->id, $user->email);
+        $credentials = new UserTotpCredentialRepository($pdo);
+        $this->activateTotp($credentials, $user->id, $user->email);
+        $events = new SecurityEventRepository($pdo);
+        $csrf = new CsrfTokenManager($storage);
+        $controller = new AccountSecurityController($session, $credentials, $csrf);
+        $token = $csrf->issue('totp_recovery_codes_form');
+
+        $response = $controller->generateRecoveryCodes(
+            [
+                'csrf_token' => $token->value,
+                'code' => '000000',
+            ],
+            new TotpLoginVerificationService($credentials, $this->secretProtector()),
+            $this->recoveryCodeService($pdo),
+            new SecurityEventLogger($events),
+            '127.0.0.1',
+        );
+
+        self::assertSame(400, $response->statusCode);
+        self::assertStringContainsString('Unable to generate recovery codes', $response->body);
+        self::assertSame([], (new UserTotpRecoveryCodeRepository($pdo))->findActiveByUserId($user->id));
+        self::assertSame(SecurityEventType::TotpRecoveryCodesGenerationFailed->value, $events->all()[0]['type']);
+    }
+
+    public function testGeneratesRecoveryCodesWithValidTotpAndRecordsEvent(): void
+    {
+        $storage = [];
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $session = new AuthSession($storage);
+        $session->markFullyAuthenticated($user->id, $user->email);
+        $credentials = new UserTotpCredentialRepository($pdo);
+        $secret = $this->activateTotp($credentials, $user->id, $user->email);
+        $events = new SecurityEventRepository($pdo);
+        $csrf = new CsrfTokenManager($storage);
+        $controller = new AccountSecurityController($session, $credentials, $csrf);
+        $token = $csrf->issue('totp_recovery_codes_form');
+        $code = (new TotpGenerator())->generate($secret, time());
+        $recoveryCodes = new UserTotpRecoveryCodeRepository($pdo);
+
+        $response = $controller->generateRecoveryCodes(
+            [
+                'csrf_token' => $token->value,
+                'code' => $code,
+            ],
+            new TotpLoginVerificationService($credentials, $this->secretProtector()),
+            $this->recoveryCodeService($pdo),
+            new SecurityEventLogger($events),
+            '127.0.0.1',
+        );
+
+        self::assertSame(200, $response->statusCode);
+        self::assertStringContainsString('<h2 id="recovery-codes">Recovery Codes</h2>', $response->body);
+        self::assertStringContainsString('Save these codes now. They will not be shown again.', $response->body);
+        self::assertCount(8, $recoveryCodes->findActiveByUserId($user->id));
+        self::assertSame(SecurityEventType::TotpRecoveryCodesGenerated->value, $events->all()[0]['type']);
+        self::assertStringNotContainsString($code, json_encode($events->all(), JSON_THROW_ON_ERROR));
+    }
+
     /**
      * @param array<string, mixed> $storage
      */
@@ -229,6 +307,7 @@ final class AccountSecurityControllerTest extends TestCase
             new CreateUsersTable(),
             new CreateSecurityEventsTable(),
             new CreateUserTotpCredentialsTable(),
+            new CreateUserTotpRecoveryCodesTable(),
         ]);
         $runner->run();
 
@@ -251,5 +330,14 @@ final class AccountSecurityControllerTest extends TestCase
     private function secretProtector(): TotpSecretProtector
     {
         return new TotpSecretProtector(str_repeat('a', 32), 'local');
+    }
+
+    private function recoveryCodeService(PDO $pdo): TotpRecoveryCodeService
+    {
+        return new TotpRecoveryCodeService(
+            new UserTotpRecoveryCodeRepository($pdo),
+            new TotpRecoveryCodeGenerator(),
+            new TotpRecoveryCodeHasher(),
+        );
     }
 }

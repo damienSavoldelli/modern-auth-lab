@@ -15,6 +15,7 @@ use ModernAuthLab\Application\Security\SecurityEventLogger;
 use ModernAuthLab\Application\Totp\TotpDisableService;
 use ModernAuthLab\Application\Totp\TotpEnrollmentService;
 use ModernAuthLab\Application\Totp\TotpLoginVerificationService;
+use ModernAuthLab\Application\Totp\TotpRecoveryCodeService;
 use ModernAuthLab\Infrastructure\Persistence\DatabaseConfig;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRunner;
@@ -26,12 +27,15 @@ use ModernAuthLab\Infrastructure\Persistence\SecurityEventRepository;
 use ModernAuthLab\Infrastructure\Persistence\SqliteConnectionFactory;
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
+use ModernAuthLab\Infrastructure\Persistence\UserTotpRecoveryCodeRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\Password\PasswordHasher;
 use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
 use ModernAuthLab\Security\Totp\TotpChallengeRateLimiter;
 use ModernAuthLab\Security\Totp\TotpQrCodeRenderer;
 use ModernAuthLab\Security\Totp\TotpRateLimitConfig;
+use ModernAuthLab\Security\Totp\TotpRecoveryCodeGenerator;
+use ModernAuthLab\Security\Totp\TotpRecoveryCodeHasher;
 use ModernAuthLab\Security\Totp\TotpSecretEncryptionConfig;
 use ModernAuthLab\Session\NativeSession;
 use ModernAuthLab\Session\SessionCookieOptions;
@@ -126,6 +130,48 @@ $router->post('/account/security/totp/disable', static function (): Response {
         new TotpDisableService(
             new UserTotpCredentialRepository($pdo),
             $totpConfig->protector(),
+        ),
+        new SecurityEventLogger(new SecurityEventRepository($pdo)),
+        clientIp(),
+    );
+});
+
+$router->post('/account/security/totp/recovery-codes/generate', static function (): Response {
+    try {
+        $controller = createAccountSecurityController();
+        $totpConfig = TotpSecretEncryptionConfig::fromEnvironment(getenvArray());
+    } catch (\InvalidArgumentException) {
+        return Response::html(<<<'HTML'
+            <!doctype html>
+            <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Account Security - Modern Auth Lab</title>
+                </head>
+                <body>
+                    <main>
+                        <h1>Account Security</h1>
+                        <p>TOTP recovery-code actions are not configured.</p>
+                    </main>
+                </body>
+            </html>
+            HTML, 500);
+    }
+
+    $pdo = createApplicationConnection();
+    $totpCredentials = new UserTotpCredentialRepository($pdo);
+
+    return $controller->generateRecoveryCodes(
+        $_POST,
+        new TotpLoginVerificationService(
+            $totpCredentials,
+            $totpConfig->protector(),
+        ),
+        new TotpRecoveryCodeService(
+            new UserTotpRecoveryCodeRepository($pdo),
+            new TotpRecoveryCodeGenerator(),
+            new TotpRecoveryCodeHasher(),
         ),
         new SecurityEventLogger(new SecurityEventRepository($pdo)),
         clientIp(),
