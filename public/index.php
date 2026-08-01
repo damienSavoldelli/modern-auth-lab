@@ -19,6 +19,7 @@ use ModernAuthLab\Infrastructure\Persistence\DatabaseConfig;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRunner;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateSecurityEventsTable;
+use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUserTotpRecoveryCodesTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUserTotpCredentialsTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUsersTable;
 use ModernAuthLab\Infrastructure\Persistence\SecurityEventRepository;
@@ -294,6 +295,7 @@ function createApplicationConnection(): \PDO
         new CreateUsersTable(),
         new CreateSecurityEventsTable(),
         new CreateUserTotpCredentialsTable(),
+        new CreateUserTotpRecoveryCodesTable(),
     ]))->run();
 
     return $pdo;
