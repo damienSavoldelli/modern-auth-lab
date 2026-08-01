@@ -12,6 +12,9 @@ use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUsersTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUserTotpCredentialsTable;
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
+use ModernAuthLab\Security\Csrf\CsrfTokenManager;
+use ModernAuthLab\Security\Totp\TotpGenerator;
+use ModernAuthLab\Security\Totp\TotpSecret;
 use ModernAuthLab\Security\Totp\TotpSecretProtector;
 use ModernAuthLab\Session\AuthSession;
 use PDO;
@@ -60,6 +63,76 @@ final class TotpSetupControllerTest extends TestCase
         self::assertStringContainsString('New pending TOTP enrollment created.', $response->body);
         self::assertStringContainsString('otpauth://totp/', $response->body);
         self::assertStringContainsString('Manual Secret', $response->body);
+        self::assertStringContainsString('<form method="post" action="/account/totp/setup">', $response->body);
+        self::assertArrayHasKey('totp_setup_form', $storage['_csrf_tokens']);
+        self::assertNotNull($credentials->findPendingByUserId($user->id));
+    }
+
+    public function testConfirmsPendingCredentialWithValidCode(): void
+    {
+        $storage = [];
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $session = new AuthSession($storage);
+        $session->markFullyAuthenticated($user->id, $user->email);
+        $credentials = new UserTotpCredentialRepository($pdo);
+        $controller = $this->createController($storage, $credentials);
+        $setupResponse = $controller->show();
+        $code = $this->codeFromSetupPage($setupResponse->body);
+        $token = (new CsrfTokenManager($storage))->issue('totp_setup_form');
+
+        $response = $controller->confirm([
+            'csrf_token' => $token->value,
+            'code' => $code,
+        ]);
+
+        self::assertSame(303, $response->statusCode);
+        self::assertSame(['Location' => '/account'], $response->headers);
+        self::assertNull($credentials->findPendingByUserId($user->id));
+        self::assertNotNull($credentials->findActiveByUserId($user->id));
+    }
+
+    public function testRejectsInvalidConfirmationCode(): void
+    {
+        $storage = [];
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $session = new AuthSession($storage);
+        $session->markFullyAuthenticated($user->id, $user->email);
+        $credentials = new UserTotpCredentialRepository($pdo);
+        $controller = $this->createController($storage, $credentials);
+        $controller->show();
+        $token = (new CsrfTokenManager($storage))->issue('totp_setup_form');
+
+        $response = $controller->confirm([
+            'csrf_token' => $token->value,
+            'code' => '000000',
+        ]);
+
+        self::assertSame(400, $response->statusCode);
+        self::assertStringContainsString('Invalid authenticator code.', $response->body);
+        self::assertNotNull($credentials->findPendingByUserId($user->id));
+        self::assertNull($credentials->findActiveByUserId($user->id));
+    }
+
+    public function testRejectsInvalidCsrfDuringConfirmation(): void
+    {
+        $storage = [];
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $session = new AuthSession($storage);
+        $session->markFullyAuthenticated($user->id, $user->email);
+        $credentials = new UserTotpCredentialRepository($pdo);
+        $controller = $this->createController($storage, $credentials);
+        $controller->show();
+
+        $response = $controller->confirm([
+            'csrf_token' => 'invalid',
+            'code' => '000000',
+        ]);
+
+        self::assertSame(400, $response->statusCode);
+        self::assertStringContainsString('Invalid authenticator code.', $response->body);
         self::assertNotNull($credentials->findPendingByUserId($user->id));
     }
 
@@ -92,6 +165,7 @@ final class TotpSetupControllerTest extends TestCase
 
         return new TotpSetupController(
             new AuthSession($storage),
+            new CsrfTokenManager($storage),
             new TotpEnrollmentService(
                 $credentials,
                 new TotpSecretProtector(str_repeat('a', 32), 'local'),
@@ -113,5 +187,13 @@ final class TotpSetupControllerTest extends TestCase
         $runner->run();
 
         return $pdo;
+    }
+
+    private function codeFromSetupPage(string $body): string
+    {
+        preg_match('/<code>([A-Z2-7]+)<\\/code>/', $body, $matches);
+        self::assertArrayHasKey(1, $matches);
+
+        return (new TotpGenerator())->generate(TotpSecret::fromBase32($matches[1]), time());
     }
 }

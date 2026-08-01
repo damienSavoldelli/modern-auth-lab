@@ -89,6 +89,31 @@ $router->get('/account/totp/setup', static function (): Response {
     return $controller->show();
 });
 
+$router->post('/account/totp/setup', static function (): Response {
+    try {
+        $controller = createTotpSetupController();
+    } catch (\InvalidArgumentException) {
+        return Response::html(<<<'HTML'
+            <!doctype html>
+            <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>TOTP Setup - Modern Auth Lab</title>
+                </head>
+                <body>
+                    <main>
+                        <h1>TOTP Setup</h1>
+                        <p>TOTP enrollment is not configured.</p>
+                    </main>
+                </body>
+            </html>
+            HTML, 500);
+    }
+
+    return $controller->confirm($_POST);
+});
+
 $router->post('/logout', static function (): Response {
     [$nativeSession, $authSession] = createSessionContext();
     $pdo = createApplicationConnection();
@@ -146,6 +171,7 @@ function createTotpSetupController(): TotpSetupController
 
     return new TotpSetupController(
         $authSession,
+        new CsrfTokenManager($_SESSION),
         new TotpEnrollmentService(
             new UserTotpCredentialRepository($pdo),
             $totpConfig->protector(),

@@ -498,10 +498,49 @@ This avoids generating a new secret on every refresh and keeps the setup experie
 What is not done yet:
 
 - no QR code rendering;
-- no first-code confirmation form;
-- no activation of TOTP;
 - no TOTP requirement during login;
 - no setup restart/recovery flow.
+
+## Enrollment Confirmation
+
+TOTP must not become active immediately after the setup page is displayed.
+
+Showing an `otpauth://` URI or QR code only proves that the server generated a secret. It does not prove that the user successfully saved that secret in an authenticator app.
+
+The confirmation step solves this:
+
+```text
+server has pending secret
+user scans/adds secret in authenticator app
+app generates a six-digit code
+user submits that code
+server verifies code from the pending secret
+server activates TOTP only if the code is valid
+```
+
+Current local route:
+
+```text
+POST /account/totp/setup
+```
+
+Security controls:
+
+- the route requires a fully authenticated session;
+- the form is protected by CSRF;
+- invalid CSRF and invalid TOTP code both produce a generic failure;
+- the pending credential remains pending on failure;
+- the credential becomes `active` only after a valid code;
+- the accepted time step is recorded as `last_used_time_step`.
+
+Recording `last_used_time_step` during confirmation prepares replay prevention. If the same time-step code is submitted again later, future login verification can compare against this stored value and reject reuse.
+
+What is still not done yet:
+
+- QR code rendering;
+- TOTP requirement during login;
+- TOTP-specific rate limiting;
+- recovery/reset flow.
 
 ## Multi-Device Behavior
 

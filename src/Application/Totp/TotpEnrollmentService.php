@@ -7,9 +7,11 @@ namespace ModernAuthLab\Application\Totp;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredential;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Security\Totp\ProtectedTotpSecret;
+use ModernAuthLab\Security\Totp\TotpGenerator;
 use ModernAuthLab\Security\Totp\TotpProvisioningUri;
 use ModernAuthLab\Security\Totp\TotpSecret;
 use ModernAuthLab\Security\Totp\TotpSecretProtector;
+use ModernAuthLab\Security\Totp\TotpVerifier;
 use RuntimeException;
 
 /**
@@ -75,6 +77,40 @@ final readonly class TotpEnrollmentService
             $secret->base32(),
             true,
         );
+    }
+
+    /**
+     * Confirm a pending enrollment with the first valid authenticator code.
+     *
+     * @param int $userId Authenticated user id.
+     * @param string $submittedCode Code submitted from the authenticator app.
+     * @param int|null $timestamp Server-observed unix timestamp, injectable for tests.
+     *
+     * @return bool True when the pending credential became active.
+     */
+    public function confirm(int $userId, string $submittedCode, ?int $timestamp = null): bool
+    {
+        $credential = $this->credentials->findPendingByUserId($userId);
+        if ($credential === null) {
+            return false;
+        }
+
+        $secret = $this->secretProtector->reveal(new ProtectedTotpSecret(
+            $credential->secretCiphertext,
+            $credential->secretNonce,
+            $credential->secretKeyId,
+        ));
+        $verifier = new TotpVerifier(new TotpGenerator($credential->algorithm, $credential->digits, $credential->period));
+        $result = $verifier->verify($secret, $submittedCode, $timestamp ?? time());
+
+        if (! $result->success || $result->timeStep === null) {
+            return false;
+        }
+
+        $this->credentials->recordLastUsedTimeStep($credential->id, $result->timeStep);
+        $this->credentials->confirm($credential->id);
+
+        return true;
     }
 
     private function resultFromExistingPendingCredential(

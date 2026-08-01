@@ -11,6 +11,8 @@ use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUsersTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUserTotpCredentialsTable;
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
+use ModernAuthLab\Security\Totp\TotpGenerator;
+use ModernAuthLab\Security\Totp\TotpSecret;
 use ModernAuthLab\Security\Totp\TotpSecretProtector;
 use PDO;
 use PHPUnit\Framework\TestCase;
@@ -66,6 +68,58 @@ final class TotpEnrollmentServiceTest extends TestCase
         $this->expectExceptionMessage('TOTP is already active for this user.');
 
         $service->start($user->id, $user->email);
+    }
+
+    public function testConfirmsPendingEnrollmentWithValidCode(): void
+    {
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $credentials = new UserTotpCredentialRepository($pdo);
+        $service = new TotpEnrollmentService($credentials, new TotpSecretProtector(str_repeat('a', 32), 'local'));
+        $pending = $service->start($user->id, $user->email);
+        $code = $this->codeFromProvisioningSecret($pending->secretBase32, 59);
+
+        $confirmed = $service->confirm($user->id, $code, 59);
+        $activeCredential = $credentials->findActiveByUserId($user->id);
+
+        self::assertTrue($confirmed);
+        self::assertNotNull($activeCredential);
+        self::assertSame($pending->credential->id, $activeCredential->id);
+        self::assertSame(1, $activeCredential->lastUsedTimeStep);
+    }
+
+    public function testRejectsInvalidConfirmationCode(): void
+    {
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $credentials = new UserTotpCredentialRepository($pdo);
+        $service = new TotpEnrollmentService($credentials, new TotpSecretProtector(str_repeat('a', 32), 'local'));
+        $service->start($user->id, $user->email);
+
+        $confirmed = $service->confirm($user->id, '000000', 59);
+
+        self::assertFalse($confirmed);
+        self::assertNotNull($credentials->findPendingByUserId($user->id));
+        self::assertNull($credentials->findActiveByUserId($user->id));
+    }
+
+    public function testRejectsConfirmationWithoutPendingCredential(): void
+    {
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $service = new TotpEnrollmentService(
+            new UserTotpCredentialRepository($pdo),
+            new TotpSecretProtector(str_repeat('a', 32), 'local'),
+        );
+
+        self::assertFalse($service->confirm($user->id, '000000', 59));
+    }
+
+    private function codeFromProvisioningSecret(string $base32Secret, int $timestamp): string
+    {
+        $secret = TotpSecret::fromBase32($base32Secret);
+
+        return (new TotpGenerator())->generate($secret, $timestamp);
     }
 
     private function createMigratedConnection(): PDO
