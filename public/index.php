@@ -13,6 +13,7 @@ use ModernAuthLab\Infrastructure\Persistence\DatabaseConfig;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRunner;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateSecurityEventsTable;
+use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUserTotpCredentialsTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUsersTable;
 use ModernAuthLab\Infrastructure\Persistence\SecurityEventRepository;
 use ModernAuthLab\Infrastructure\Persistence\SqliteConnectionFactory;
@@ -106,6 +107,7 @@ function createApplicationConnection(): PDO
     (new MigrationRunner($pdo, $migrationRepository, [
         new CreateUsersTable(),
         new CreateSecurityEventsTable(),
+        new CreateUserTotpCredentialsTable(),
     ]))->run();
 
     return $pdo;

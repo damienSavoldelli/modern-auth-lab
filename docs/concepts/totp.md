@@ -48,16 +48,19 @@ TOTP code   = short six-digit code generated later from the secret + current tim
 What has been implemented first in `v0.5.0`:
 
 - `Base32`, because authenticator apps expect secrets in this format;
-- `TotpSecret`, because the project needs a safe object for generating and validating shared secrets.
+- `TotpSecret`, because the project needs a safe object for generating and validating shared secrets;
+- `otpauth://` URI generation, because authenticator apps need a standard provisioning payload;
+- code generation and verification, because the server must independently compute and check submitted codes;
+- persistence structure, because enrollment state and verification parameters must survive requests.
 
 What has not been implemented yet:
 
-- the `otpauth://` URI;
 - the QR code;
-- the six-digit TOTP code calculation;
-- the submitted-code verification flow.
+- the HTTP enrollment screens;
+- the first-code confirmation flow;
+- TOTP enforcement during login.
 
-So Base32 and `TotpSecret` are not the login code shown by the authenticator app. They are the foundation that allows the app and the server to share the same secret before codes can be generated.
+So Base32, `TotpSecret`, provisioning URIs, and persistence records are not the login code shown by the authenticator app. They are the foundation that allows the app and the server to share the same secret and parameters before codes can be generated and verified.
 
 ## The `otpauth://` URI
 
@@ -245,6 +248,65 @@ result: codes no longer match
 ```
 
 Future persistence must therefore store TOTP parameters with the enrollment record, not rely only on a global configuration.
+
+## Persistence Model
+
+The database does not store the temporary six-digit code.
+
+It stores the TOTP enrollment record:
+
+- user id;
+- protected secret payload;
+- secret nonce;
+- secret key id;
+- algorithm;
+- digits;
+- period;
+- lifecycle status;
+- confirmation timestamp;
+- last accepted time step;
+- revocation timestamp.
+
+The important distinction is:
+
+```text
+stored credential = long-lived enrollment state
+submitted code    = short-lived proof generated from that state
+```
+
+The current schema uses these secret-storage fields:
+
+```text
+secret_ciphertext
+secret_nonce
+secret_key_id
+```
+
+This is intentional. A raw TOTP secret is equivalent to a reusable MFA factor. If an attacker obtains the secret, they can generate future valid codes. The repository therefore models protected storage from the start instead of introducing a plain `secret` column.
+
+Actual encryption and key loading are still introduced in a later enrollment/application step. The persistence schema is already shaped so that this later step can store encrypted secret material without changing the database contract.
+
+Credential lifecycle status:
+
+```text
+pending = secret has been generated, but the user has not proven possession yet
+active  = user has submitted a valid first code and TOTP can be used
+revoked = credential must no longer be accepted
+```
+
+Why `pending` matters:
+
+- scanning a QR code does not prove the user saved it correctly;
+- enrollment should become active only after the user submits a valid code;
+- abandoned setup attempts should not silently become usable MFA credentials.
+
+Why `last_used_time_step` matters:
+
+- TOTP codes can be replayed inside their accepted time step;
+- the verifier returns the accepted time step;
+- persistence can later remember that time step and reject reuse.
+
+The schema currently allows only one `pending` or `active` TOTP credential per user. This matches the practical limitation of TOTP: if the same QR code is copied to multiple phones, the server cannot distinguish those phones anyway. Passkeys will later handle true per-device lifecycle and per-device revocation.
 
 ## Multi-Device Behavior
 
