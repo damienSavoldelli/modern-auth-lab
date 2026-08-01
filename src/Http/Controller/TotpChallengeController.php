@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ModernAuthLab\Http\Controller;
 
 use ModernAuthLab\Http\Response;
+use ModernAuthLab\Security\Csrf\CsrfTokenException;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Session\AuthSession;
 use ModernAuthLab\Session\AuthSessionState;
@@ -36,6 +37,42 @@ final readonly class TotpChallengeController
      */
     public function show(): Response
     {
+        $redirect = $this->redirectWhenSessionCannotUseChallenge();
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
+        return Response::html($this->renderForm($this->csrf->issue(self::CSRF_TOKEN_ID)->value));
+    }
+
+    /**
+     * Accept the TOTP challenge form submission without verifying the code yet.
+     *
+     * This skeleton exists so CSRF and session authorization are in place before
+     * the cryptographic TOTP verification service is wired in the next step.
+     *
+     * @param array<string, mixed> $post Submitted form data.
+     *
+     * @return Response Placeholder response, generic failure, or redirect.
+     */
+    public function submit(array $post): Response
+    {
+        $redirect = $this->redirectWhenSessionCannotUseChallenge();
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
+        try {
+            $this->csrf->consume(self::CSRF_TOKEN_ID, $this->stringValue($post['csrf_token'] ?? null));
+        } catch (CsrfTokenException) {
+            return $this->failedChallengeResponse();
+        }
+
+        return Response::html($this->renderVerificationPendingPage(), 501);
+    }
+
+    private function redirectWhenSessionCannotUseChallenge(): ?Response
+    {
         if ($this->session->state() === AuthSessionState::FullyAuthenticated) {
             return Response::redirect('/account');
         }
@@ -44,12 +81,26 @@ final readonly class TotpChallengeController
             return Response::redirect('/login');
         }
 
-        return Response::html($this->renderForm($this->csrf->issue(self::CSRF_TOKEN_ID)->value));
+        return null;
     }
 
-    private function renderForm(string $csrfToken): string
+    private function failedChallengeResponse(): Response
+    {
+        return Response::html(
+            $this->renderForm(
+                $this->csrf->issue(self::CSRF_TOKEN_ID)->value,
+                'Invalid authenticator code.',
+            ),
+            400,
+        );
+    }
+
+    private function renderForm(string $csrfToken, ?string $error = null): string
     {
         $escapedToken = htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $errorHtml = $error === null
+            ? ''
+            : '<p role="alert">' . htmlspecialchars($error, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>';
 
         return <<<HTML
             <!doctype html>
@@ -62,6 +113,7 @@ final readonly class TotpChallengeController
                 <body>
                     <main>
                         <h1>TOTP Challenge</h1>
+                        {$errorHtml}
                         <form method="post" action="/login/totp">
                             <input type="hidden" name="csrf_token" value="{$escapedToken}">
                             <label>
@@ -74,5 +126,30 @@ final readonly class TotpChallengeController
                 </body>
             </html>
             HTML;
+    }
+
+    private function renderVerificationPendingPage(): string
+    {
+        return <<<'HTML'
+            <!doctype html>
+            <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>TOTP Challenge - Modern Auth Lab</title>
+                </head>
+                <body>
+                    <main>
+                        <h1>TOTP Challenge</h1>
+                        <p>TOTP verification is implemented in the next step.</p>
+                    </main>
+                </body>
+            </html>
+            HTML;
+    }
+
+    private function stringValue(mixed $value): string
+    {
+        return is_string($value) ? $value : '';
     }
 }

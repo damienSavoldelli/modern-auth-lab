@@ -64,6 +64,16 @@ $router->get('/login/totp', static function (): Response {
     return $controller->show();
 });
 
+$router->post('/login/totp', static function (): Response {
+    [, $authSession] = createSessionContext();
+    $controller = new TotpChallengeController(
+        $authSession,
+        new CsrfTokenManager($_SESSION),
+    );
+
+    return $controller->submit($_POST);
+});
+
 $router->get('/account', static function (): Response {
     [, $authSession] = createSessionContext();
 
