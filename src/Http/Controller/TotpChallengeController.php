@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ModernAuthLab\Http\Controller;
 
+use Closure;
+use ModernAuthLab\Application\Totp\TotpLoginVerificationService;
 use ModernAuthLab\Http\Response;
 use ModernAuthLab\Security\Csrf\CsrfTokenException;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
@@ -24,10 +26,14 @@ final readonly class TotpChallengeController
     /**
      * @param AuthSession $session Current authentication session facade.
      * @param CsrfTokenManager $csrf CSRF token manager for challenge submission.
+     * @param TotpLoginVerificationService $verification TOTP login verification service.
+     * @param Closure(): void $rotateSessionId Session id rotation callback.
      */
     public function __construct(
         private AuthSession $session,
         private CsrfTokenManager $csrf,
+        private TotpLoginVerificationService $verification,
+        private Closure $rotateSessionId,
     ) {}
 
     /**
@@ -46,14 +52,11 @@ final readonly class TotpChallengeController
     }
 
     /**
-     * Accept the TOTP challenge form submission without verifying the code yet.
-     *
-     * This skeleton exists so CSRF and session authorization are in place before
-     * the cryptographic TOTP verification service is wired in the next step.
+     * Process the TOTP challenge form submission.
      *
      * @param array<string, mixed> $post Submitted form data.
      *
-     * @return Response Placeholder response, generic failure, or redirect.
+     * @return Response Redirect on success, generic failure, or redirect.
      */
     public function submit(array $post): Response
     {
@@ -68,7 +71,22 @@ final readonly class TotpChallengeController
             return $this->failedChallengeResponse();
         }
 
-        return Response::html($this->renderVerificationPendingPage(), 501);
+        $userId = $this->session->userId();
+        $email = $this->session->userEmail();
+
+        if ($userId === null || $email === null) {
+            return Response::redirect('/login');
+        }
+
+        $result = $this->verification->verify($userId, $this->stringValue($post['code'] ?? null));
+        if (! $result->success) {
+            return $this->failedChallengeResponse();
+        }
+
+        $this->session->markFullyAuthenticated($userId, $email);
+        ($this->rotateSessionId)();
+
+        return Response::redirect('/account');
     }
 
     private function redirectWhenSessionCannotUseChallenge(): ?Response
@@ -122,26 +140,6 @@ final readonly class TotpChallengeController
                             </label>
                             <button type="submit">Verify TOTP</button>
                         </form>
-                    </main>
-                </body>
-            </html>
-            HTML;
-    }
-
-    private function renderVerificationPendingPage(): string
-    {
-        return <<<'HTML'
-            <!doctype html>
-            <html lang="en">
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>TOTP Challenge - Modern Auth Lab</title>
-                </head>
-                <body>
-                    <main>
-                        <h1>TOTP Challenge</h1>
-                        <p>TOTP verification is implemented in the next step.</p>
                     </main>
                 </body>
             </html>

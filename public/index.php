@@ -12,6 +12,7 @@ use ModernAuthLab\Http\Router;
 use ModernAuthLab\Application\Auth\PasswordAuthenticator;
 use ModernAuthLab\Application\Security\SecurityEventLogger;
 use ModernAuthLab\Application\Totp\TotpEnrollmentService;
+use ModernAuthLab\Application\Totp\TotpLoginVerificationService;
 use ModernAuthLab\Infrastructure\Persistence\DatabaseConfig;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRunner;
@@ -55,21 +56,13 @@ $router->post('/login', static function (): Response {
 });
 
 $router->get('/login/totp', static function (): Response {
-    [, $authSession] = createSessionContext();
-    $controller = new TotpChallengeController(
-        $authSession,
-        new CsrfTokenManager($_SESSION),
-    );
+    $controller = createTotpChallengeController();
 
     return $controller->show();
 });
 
 $router->post('/login/totp', static function (): Response {
-    [, $authSession] = createSessionContext();
-    $controller = new TotpChallengeController(
-        $authSession,
-        new CsrfTokenManager($_SESSION),
-    );
+    $controller = createTotpChallengeController();
 
     return $controller->submit($_POST);
 });
@@ -199,6 +192,29 @@ function createTotpSetupController(): TotpSetupController
             $totpConfig->protector(),
         ),
         new TotpQrCodeRenderer(),
+    );
+}
+
+function createTotpChallengeController(): TotpChallengeController
+{
+    [$nativeSession, $authSession] = createSessionContext();
+    $pdo = createApplicationConnection();
+    $environment = getenv();
+
+    if (! is_array($environment)) {
+        $environment = [];
+    }
+
+    $totpConfig = TotpSecretEncryptionConfig::fromEnvironment($environment);
+
+    return new TotpChallengeController(
+        $authSession,
+        new CsrfTokenManager($_SESSION),
+        new TotpLoginVerificationService(
+            new UserTotpCredentialRepository($pdo),
+            $totpConfig->protector(),
+        ),
+        static fn() => $nativeSession->rotateId(),
     );
 }
 
