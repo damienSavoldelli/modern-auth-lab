@@ -1,0 +1,39 @@
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+    authors:
+      - dependabot
+  categories:
+    - title: Security And Authentication
+      labels:
+        - security
+        - auth
+        - totp
+        - passkeys
+        - webauthn
+        - mfa
+    - title: Backend
+      labels:
+        - backend
+        - php
+        - sqlite
+        - persistence
+    - title: Frontend
+      labels:
+        - frontend
+        - javascript
+        - css
+    - title: Documentation
+      labels:
+        - documentation
+        - docs
+    - title: Testing And Quality
+      labels:
+        - tests
+        - testing
+        - quality
+        - ci
+    - title: Other Changes
+      labels:
+        - '*'
