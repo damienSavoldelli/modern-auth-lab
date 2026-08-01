@@ -12,6 +12,12 @@ Prefer primary standards and established security references before blog posts o
 - RFC 4226, HOTP: An HMAC-Based One-Time Password Algorithm  
   https://datatracker.ietf.org/doc/html/rfc4226
 
+- Google Authenticator Key URI Format  
+  https://github.com/google/google-authenticator/wiki/Key-Uri-Format
+
+- Yubico OATH URI String Format  
+  https://docs.yubico.com/yesdk/users-manual/application-oath/uri-string-format.html
+
 ## WebAuthn And Passkeys
 
 - W3C WebAuthn Level 3 specification  

@@ -78,6 +78,40 @@ The URI tells the app:
 
 The QR code shown during enrollment is a visual encoding of this URI.
 
+The URI is not the QR code itself. The QR code is only a visual container that encodes this URI so the authenticator app can read it.
+
+The provisioning chain is:
+
+```text
+TotpSecret
+    -> Base32
+    -> otpauth:// URI
+    -> QR code
+    -> authenticator app
+```
+
+With the default project settings, the URI communicates:
+
+```text
+Type        = TOTP
+Service     = Modern Auth Lab
+Account     = dev@example.com
+Secret      = Base32 shared secret
+Algorithm   = SHA1
+Digits      = 6
+Period      = 30 seconds
+```
+
+The project keeps these values configurable:
+
+- `issuer`, the service/provider shown by the app;
+- `accountLabel`, the account shown by the app;
+- `algorithm`, currently allowed as `SHA1`, `SHA256`, or `SHA512`;
+- `digits`, currently allowed as `6` or `8`;
+- `period`, the code validity period in seconds.
+
+Defaulting to `SHA1`, `6` digits, and `30` seconds is a compatibility choice. SHA1 is not recommended for new general-purpose signatures, but TOTP commonly uses HMAC-SHA1 with a shared secret and short time window. The class remains configurable so stronger algorithms can be tested without changing the provisioning model.
+
 ## Multi-Device Behavior
 
 TOTP is not device-specific.
