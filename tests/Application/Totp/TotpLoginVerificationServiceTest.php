@@ -72,6 +72,49 @@ final class TotpLoginVerificationServiceTest extends TestCase
         self::assertSame(1, $activeCredential->lastUsedTimeStep);
     }
 
+    public function testRejectsAlreadyAcceptedTimeStep(): void
+    {
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $credentials = new UserTotpCredentialRepository($pdo);
+        $secretProtector = new TotpSecretProtector(str_repeat('a', 32), 'local');
+        $secret = $this->activateTotp($credentials, $secretProtector, $user->id, $user->email);
+        $code = (new TotpGenerator())->generate($secret, 90);
+        $service = new TotpLoginVerificationService($credentials, $secretProtector);
+
+        $firstResult = $service->verify($user->id, $code, 90);
+        $secondResult = $service->verify($user->id, $code, 90);
+        $activeCredential = $credentials->findActiveByUserId($user->id);
+
+        self::assertTrue($firstResult->success);
+        self::assertFalse($secondResult->success);
+        self::assertNull($secondResult->timeStep);
+        self::assertNotNull($activeCredential);
+        self::assertSame(3, $activeCredential->lastUsedTimeStep);
+    }
+
+    public function testRejectsOlderAcceptedTimeStepInsideVerificationWindow(): void
+    {
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $credentials = new UserTotpCredentialRepository($pdo);
+        $secretProtector = new TotpSecretProtector(str_repeat('a', 32), 'local');
+        $secret = $this->activateTotp($credentials, $secretProtector, $user->id, $user->email);
+        $service = new TotpLoginVerificationService($credentials, $secretProtector);
+        $currentCode = (new TotpGenerator())->generate($secret, 90);
+        $previousCode = (new TotpGenerator())->generate($secret, 60);
+
+        $firstResult = $service->verify($user->id, $currentCode, 90);
+        $olderResult = $service->verify($user->id, $previousCode, 90);
+        $activeCredential = $credentials->findActiveByUserId($user->id);
+
+        self::assertTrue($firstResult->success);
+        self::assertFalse($olderResult->success);
+        self::assertNull($olderResult->timeStep);
+        self::assertNotNull($activeCredential);
+        self::assertSame(3, $activeCredential->lastUsedTimeStep);
+    }
+
     private function activateTotp(
         UserTotpCredentialRepository $credentials,
         TotpSecretProtector $secretProtector,

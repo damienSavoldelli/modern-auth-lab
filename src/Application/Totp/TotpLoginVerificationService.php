@@ -56,6 +56,10 @@ final readonly class TotpLoginVerificationService
             return TotpLoginVerificationResult::failure();
         }
 
+        if ($credential->lastUsedTimeStep !== null && $result->timeStep <= $credential->lastUsedTimeStep) {
+            return TotpLoginVerificationResult::failure();
+        }
+
         $this->credentials->recordLastUsedTimeStep($credential->id, $result->timeStep);
 
         return TotpLoginVerificationResult::success($result->timeStep);
