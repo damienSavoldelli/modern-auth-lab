@@ -4,6 +4,26 @@ All notable changes to Modern Auth Lab will be documented in this file.
 
 The format follows Keep a Changelog conventions, and this project uses semantic versioning for project milestones.
 
+## [0.5.1] - 2026-08-01
+
+### Added
+
+- Added GitHub Pull Request template.
+- Added GitHub release notes generation configuration.
+- Added project release notes template.
+- Added Codex workspace configuration.
+- Added Claude sandbox configuration.
+
+### Changed
+
+- Updated `AGENTS.md` to use the repository PR and release templates.
+- Updated `composer serve` to disable Composer's process timeout for longer local demos.
+
+### Verified
+
+- `composer validate --strict`
+- `npm run format`
+
 ## [0.5.0] - 2026-08-01
 
 ### Added
@@ -197,6 +217,7 @@ The format follows Keep a Changelog conventions, and this project uses semantic 
 - SQLite/libSQL persistence.
 - CI/CD.
 
+[0.5.1]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.5.1
 [0.5.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.5.0
 [0.4.1]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.4.1
 [0.4.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.4.0

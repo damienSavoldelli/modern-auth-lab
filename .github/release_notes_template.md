@@ -26,6 +26,4 @@
 
 ## GitHub Pull Requests Included
 
--
-
-**Full Changelog**: https://github.com/damienSavoldelli/modern-auth-lab/compare/vX.Y.Z...vX.Y.Z
+- **Full Changelog**: https://github.com/damienSavoldelli/modern-auth-lab/compare/vX.Y.Z...vX.Y.Z
