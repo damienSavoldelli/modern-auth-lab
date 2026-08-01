@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use ModernAuthLab\Http\Response;
 use ModernAuthLab\Http\Controller\AccountController;
+use ModernAuthLab\Http\Controller\AccountSecurityController;
 use ModernAuthLab\Http\Controller\LogoutController;
 use ModernAuthLab\Http\Controller\PasswordLoginController;
 use ModernAuthLab\Http\Controller\TotpChallengeController;
@@ -75,6 +76,18 @@ $router->get('/account', static function (): Response {
     $controller = new AccountController(
         $authSession,
         new CsrfTokenManager($_SESSION),
+    );
+
+    return $controller->show();
+});
+
+$router->get('/account/security', static function (): Response {
+    [, $authSession] = createSessionContext();
+    $pdo = createApplicationConnection();
+
+    $controller = new AccountSecurityController(
+        $authSession,
+        new UserTotpCredentialRepository($pdo),
     );
 
     return $controller->show();
