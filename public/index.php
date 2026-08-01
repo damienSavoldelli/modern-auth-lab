@@ -150,6 +150,7 @@ function createPasswordLoginController(): PasswordLoginController
             new PasswordHasher(),
         ),
         $authSession,
+        new UserTotpCredentialRepository($pdo),
         new LoginRateLimiter($_SESSION),
         new SecurityEventLogger(new SecurityEventRepository($pdo)),
         clientIp(),
