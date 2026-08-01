@@ -458,6 +458,51 @@ This separation keeps responsibilities clear:
 - the protector encrypts and decrypts secrets;
 - the repository stores already-protected secret material.
 
+## Enrollment Setup Page
+
+The first setup page is an authenticated page that starts or resumes a pending TOTP enrollment.
+
+Current local route:
+
+```text
+GET /account/totp/setup
+```
+
+The page currently shows:
+
+- the `otpauth://` provisioning URI;
+- the manual Base32 secret;
+- setup status showing whether a pending enrollment was created or resumed.
+
+This is intentionally an intermediate learning step before QR code rendering and first-code confirmation.
+
+Security implications:
+
+- the page must require a fully authenticated session;
+- the session must carry the authenticated user id and email;
+- the URI and manual secret contain the user TOTP secret;
+- the URI and manual secret must only be shown during setup;
+- the pending credential must not become active until the user confirms a valid first code.
+
+Why the page resumes a pending enrollment:
+
+```text
+user opens setup page
+server creates pending secret
+user refreshes page
+server reuses the same pending secret
+```
+
+This avoids generating a new secret on every refresh and keeps the setup experience understandable. A future reset/restart action can explicitly revoke or replace pending setup state.
+
+What is not done yet:
+
+- no QR code rendering;
+- no first-code confirmation form;
+- no activation of TOTP;
+- no TOTP requirement during login;
+- no setup restart/recovery flow.
+
 ## Multi-Device Behavior
 
 TOTP is not device-specific.

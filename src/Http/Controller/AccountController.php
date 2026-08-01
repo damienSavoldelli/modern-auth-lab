@@ -55,6 +55,7 @@ final readonly class AccountController
                     <main>
                         <h1>Account</h1>
                         <p>You are authenticated.</p>
+                        <p><a href="/account/totp/setup">Set up TOTP</a></p>
                         <form method="post" action="/logout">
                             <input type="hidden" name="csrf_token" value="{$escapedToken}">
                             <button type="submit">Logout</button>

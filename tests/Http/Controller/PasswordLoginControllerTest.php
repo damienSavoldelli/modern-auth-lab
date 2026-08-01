@@ -56,7 +56,10 @@ final class PasswordLoginControllerTest extends TestCase
 
         self::assertSame(303, $response->statusCode);
         self::assertSame(['Location' => '/account'], $response->headers);
-        self::assertSame(AuthSessionState::FullyAuthenticated, (new AuthSession($storage))->state());
+        $session = new AuthSession($storage);
+        self::assertSame(AuthSessionState::FullyAuthenticated, $session->state());
+        self::assertNotNull($session->userId());
+        self::assertSame('user@example.com', $session->userEmail());
         self::assertTrue($rotated);
         self::assertSame(SecurityEventType::PasswordLoginSucceeded->value, $this->events->all()[0]['type']);
     }

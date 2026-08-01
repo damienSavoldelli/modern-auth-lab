@@ -109,7 +109,7 @@ final readonly class PasswordLoginController
             $result->user?->email,
             $this->clientIp,
         );
-        $this->session->markFullyAuthenticated();
+        $this->session->markFullyAuthenticated($result->user?->id, $result->user?->email);
         ($this->rotateSessionId)();
 
         return Response::redirect('/account');
