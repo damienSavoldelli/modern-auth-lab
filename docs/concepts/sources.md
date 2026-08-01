@@ -29,6 +29,21 @@ Prefer primary standards and established security references before blog posts o
 - W3C WebAuthn Level 3 specification  
   https://www.w3.org/TR/webauthn-3/
 
+- W3C WebAuthn Level 2 Recommendation, 8 April 2021
+  https://www.w3.org/TR/webauthn-2/
+
+- W3C announcement for WebAuthn Level 2 Recommendation
+  https://www.w3.org/blog/2021/04/webauthn-level-2-is-a-w3c-recommendation/
+
+- FIDO Alliance Passkeys
+  https://fidoalliance.org/passkeys/
+
+- FIDO Alliance white paper: Multi-Device FIDO Credentials
+  https://fidoalliance.org/white-paper-multi-device-fido-credentials/
+
+- MDN Web Authentication API
+  https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API
+
 ## MFA And Authentication Security
 
 - OWASP Multifactor Authentication Cheat Sheet  

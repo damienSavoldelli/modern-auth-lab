@@ -64,6 +64,19 @@ Expected capabilities:
 
 This section tracks the concrete milestone roadmap used by the project.
 
+## MFA Method Strategy
+
+The project keeps TOTP and Passkeys as complementary authentication methods.
+
+Target roles:
+
+- Passkey: preferred phishing-resistant MFA method when available.
+- TOTP: compatible multi-platform MFA method and controlled fallback.
+- Recovery codes: exceptional recovery method.
+- Trusted devices: controlled friction reduction.
+
+The server decides which methods are allowed for the current user and context. The frontend may detect browser/device Passkey capability to improve UX, but it must not decide eligibility alone.
+
 ### `v0.1.0 - Project Foundation`
 
 Goal: establish the initial project foundation.
@@ -163,25 +176,38 @@ Delivered scope:
 - Historical implementation notes for `v0.1.0` through `v0.4.0`.
 - Documentation-only patch release.
 
-### `v0.7.0 - TOTP Lifecycle And Recovery` _(in progress)_
+### `v0.7.0 - TOTP Lifecycle And Recovery`
 
 Goal: manage TOTP loss, reset, disable, and recovery behavior.
 
-Planned scope:
+Delivered scope:
 
 - Account security page showing active TOTP status.
 - Disable TOTP when the user still has access to their authenticator.
-- Require recent authentication before disabling TOTP.
 - Require current TOTP code before normal TOTP disable.
-- Add recovery path when the authenticator is lost.
-- Add recovery codes or recovery challenge foundation.
-- Log TOTP disable, reset, recovery start, and recovery success/failure events.
-- Add user notification after TOTP disable or reset.
+- Recovery-code strategy foundation.
+- Recovery-code persistence with hash-only storage.
+- Recovery-code generation and one-time display.
+- Service-level recovery-code verification and single-use consumption.
+- Security events for TOTP disable and recovery-code generation.
+- Pending enrollment cleanup policy review.
 - Document why authenticator apps cannot notify the server when an entry is deleted locally.
+
+Intentionally deferred:
+
+- Recovery-code entry during login.
+- TOTP reset through recovery-code verification.
+- Confirmation that the user saved recovery codes.
+- User notification after TOTP disable or reset.
+- Mandatory MFA policy.
+- Preventing removal of the last available MFA factor.
+- Trusted-device assisted recovery.
+
+These items are deferred because they require a global MFA policy that should account for TOTP, Passkeys, recovery codes, and trusted devices together.
 
 ### `v0.8.0 - Passkey / WebAuthn Foundation`
 
-Goal: add WebAuthn registration and authentication primitives.
+Goal: add WebAuthn registration and authentication primitives without replacing TOTP.
 
 Planned scope:
 
@@ -191,10 +217,11 @@ Planned scope:
 - Origin, RP ID, challenge, user presence, and user verification validation.
 - Signature counter handling when available.
 - Backend tests and focused frontend WebAuthn modules.
+- Documentation for browser/device Passkey capability constraints.
 
 ### `v0.9.0 - Password + Passkey Flow`
 
-Goal: add the Password + Passkey authentication path.
+Goal: add the Password + Passkey authentication path as a preferred MFA option.
 
 Planned scope:
 
@@ -218,9 +245,9 @@ Planned scope:
 - Suspicious environment detection.
 - Security events for fallback attempts.
 
-### `v0.11.0 - Trusted Devices And Recovery`
+### `v0.11.0 - Trusted Devices, Recovery And MFA Policy`
 
-Goal: add auditable device and recovery lifecycle behavior.
+Goal: add auditable device, recovery, and global MFA lifecycle policy behavior.
 
 Planned scope:
 
@@ -229,6 +256,14 @@ Planned scope:
 - Lost-device handling.
 - Recovery flows.
 - Recovery security events.
+- Recovery-code entry during login.
+- TOTP reset through recovery-code verification.
+- Confirmation that the user saved recovery codes.
+- User notification after TOTP disable or reset.
+- Optional mandatory MFA policy.
+- Prevent removing the last available MFA factor when mandatory MFA is enabled.
+- Recovery security events for recovery-code use and TOTP reset.
+- Policy checks that consider all available MFA methods, not only TOTP.
 
 ### `v0.12.0 - Quality Gates And CI/CD`
 
