@@ -128,7 +128,7 @@ Out of scope for `v0.5.0`:
 
 Goal: add project workflow configuration for PRs, releases, and local AI-agent settings.
 
-### `v0.6.0 - Password + TOTP Flow` _(in progress)_
+### `v0.6.0 - Password + TOTP Flow`
 
 Goal: require TOTP after password verification.
 

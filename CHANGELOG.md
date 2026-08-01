@@ -4,6 +4,46 @@ All notable changes to Modern Auth Lab will be documented in this file.
 
 The format follows Keep a Changelog conventions, and this project uses semantic versioning for project milestones.
 
+## [0.6.0] - 2026-08-01
+
+### Added
+
+- Added Password + TOTP login flow for users with active TOTP credentials.
+- Added `/login/totp` challenge page and form handling.
+- Added TOTP login verification service.
+- Added `mfa_pending` session identity handling.
+- Added anti-replay protection using `last_used_time_step`.
+- Added configurable TOTP challenge rate limiting.
+- Added TOTP security events for success, failure, and rate limiting.
+- Added pending TOTP enrollment expiration and revocation.
+- Added v0.6 implementation notes.
+
+### Changed
+
+- Updated password login so active TOTP users must complete the TOTP challenge before reaching `/account`.
+- Updated roadmap to add `v0.7.0 - TOTP Lifecycle And Recovery` before Passkeys/WebAuthn.
+- Updated README with TOTP status and runtime configuration.
+
+### Verified
+
+- `composer test`
+- `composer analyse`
+- `composer cs:check`
+- `npm run build`
+- `npm test`
+- `npm run lint`
+- `npm run format`
+
+### Not Included Yet
+
+- User-facing TOTP disable/reset flow.
+- Lost-authenticator recovery.
+- Recovery codes.
+- Trusted devices.
+- Passkeys/WebAuthn.
+- Distributed/shared rate-limit storage.
+- Security events UI.
+
 ## [0.5.1] - 2026-08-01
 
 ### Added

@@ -26,11 +26,16 @@ Implemented foundation:
 - CSRF-protected logout.
 - Initial session-backed login rate limiting.
 - SQLite-backed basic security events.
+- Authenticator-app TOTP enrollment with QR code setup.
+- Password + TOTP login flow for users with active TOTP.
+- TOTP challenge anti-replay protection.
+- TOTP challenge rate limiting.
+- TOTP challenge security events.
+- Pending TOTP enrollment expiration.
 
 Not implemented yet:
 
 - CSRF middleware.
-- TOTP.
 - Passkeys/WebAuthn.
 - Trusted devices.
 - Recovery flows.
@@ -44,6 +49,31 @@ Not implemented yet:
 - Node.js 22+
 - npm 10+
 - SQLite PDO extension
+
+## Runtime Configuration
+
+The application reads local runtime configuration from `.env.local` when the file exists. The repository commits `.env.example` as the safe template.
+
+Required local variables:
+
+```env
+TOTP_SECRET_ENCRYPTION_KEY=
+TOTP_RATE_LIMIT_MAX_ATTEMPTS=5
+TOTP_RATE_LIMIT_LOCK_SECONDS=300
+```
+
+`TOTP_SECRET_ENCRYPTION_KEY` must contain a Base64-encoded 32-byte key used to encrypt TOTP secrets before SQLite persistence.
+
+Generate a local key:
+
+```bash
+php -r 'echo "TOTP_SECRET_ENCRYPTION_KEY=", base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)), PHP_EOL;'
+```
+
+The rate-limit variables control the TOTP challenge brute-force protection:
+
+- `TOTP_RATE_LIMIT_MAX_ATTEMPTS`: failed TOTP submissions before temporary lockout.
+- `TOTP_RATE_LIMIT_LOCK_SECONDS`: lockout duration in seconds.
 
 ## Installation
 
@@ -156,6 +186,7 @@ Start with:
 - [Security concepts](docs/concepts/README.md)
 - [TOTP concept note](docs/concepts/totp.md)
 - [v0.5.0 TOTP foundation implementation notes](docs/implementation-notes/v0.5-totp-foundation.md)
+- [v0.6.0 Password + TOTP flow implementation notes](docs/implementation-notes/v0.6-password-totp-flow.md)
 - [Decision records](docs/decisions/README.md)
 
 ## Versioning
