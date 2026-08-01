@@ -130,7 +130,9 @@ Small exceptions:
 
 ## Release Notes Format
 
-When the user asks for release content, use the current release note format unless they explicitly request another structure.
+When the user asks for release content, use `.github/release_notes_template.md` unless they explicitly request another structure.
+
+Use `.github/release.yml` as the GitHub auto-generated release notes configuration. It helps GitHub group merged Pull Requests and generate the Pull Request list and full changelog link.
 
 Release title format:
 
@@ -152,6 +154,10 @@ Current release note format for future releases:
 ## Scope Clarification
 
 ## Operational Guidance
+
+## GitHub Pull Requests Included
+
+**Full Changelog**: ...
 ```
 
 Optional sections:
@@ -159,6 +165,9 @@ Optional sections:
 - Include `Stability Statement` only when the release changes stability expectations, compatibility, runtime baseline, persistence, CI/CD, or security posture.
 - Include `Scope Clarification` only when it helps distinguish delivered scope from deferred scope.
 - Include `Operational Guidance` only when users need commands, migration steps, setup instructions, or deployment guidance.
+- Include `GitHub Pull Requests Included` for releases built from Pull Requests.
+- Include the `Full Changelog` compare link when the previous release tag is known.
+- Do not use `.github/release_notes_template.md` as a literal final release body without replacing placeholders.
 
 Historical release note exception:
 
@@ -172,7 +181,9 @@ Historical release note exception:
 
 ## Pull Request Format
 
-When the user asks for Pull Request content, use this structure:
+When the user asks for Pull Request content, use `.github/pull_request_template.md`.
+
+The required Pull Request structure is:
 
 ```md
 ## Scope

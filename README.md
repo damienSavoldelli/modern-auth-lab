@@ -67,6 +67,9 @@ Start the PHP development server:
 composer serve
 ```
 
+The `serve` script disables Composer's default process timeout so the local
+server can stay open during manual demos.
+
 Health check:
 
 ```bash
