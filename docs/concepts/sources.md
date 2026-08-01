@@ -21,6 +21,9 @@ Prefer primary standards and established security references before blog posts o
 - Libsodium secret-key authenticated encryption  
   https://doc.libsodium.org/secret-key_cryptography/secretbox
 
+- chillerlan/php-qrcode  
+  https://github.com/chillerlan/php-qrcode
+
 ## WebAuthn And Passkeys
 
 - W3C WebAuthn Level 3 specification  

@@ -14,6 +14,7 @@ use ModernAuthLab\Infrastructure\Persistence\UserRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\Totp\TotpGenerator;
+use ModernAuthLab\Security\Totp\TotpQrCodeRenderer;
 use ModernAuthLab\Security\Totp\TotpSecret;
 use ModernAuthLab\Security\Totp\TotpSecretProtector;
 use ModernAuthLab\Session\AuthSession;
@@ -61,6 +62,7 @@ final class TotpSetupControllerTest extends TestCase
         self::assertSame(200, $response->statusCode);
         self::assertStringContainsString('<h1>TOTP Setup</h1>', $response->body);
         self::assertStringContainsString('New pending TOTP enrollment created.', $response->body);
+        self::assertStringContainsString('data:image/svg+xml;base64,', $response->body);
         self::assertStringContainsString('otpauth://totp/', $response->body);
         self::assertStringContainsString('Manual Secret', $response->body);
         self::assertStringContainsString('<form method="post" action="/account/totp/setup">', $response->body);
@@ -170,6 +172,7 @@ final class TotpSetupControllerTest extends TestCase
                 $credentials,
                 new TotpSecretProtector(str_repeat('a', 32), 'local'),
             ),
+            new TotpQrCodeRenderer(),
         );
     }
 

@@ -24,11 +24,11 @@ use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\Password\PasswordHasher;
 use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
+use ModernAuthLab\Security\Totp\TotpQrCodeRenderer;
 use ModernAuthLab\Security\Totp\TotpSecretEncryptionConfig;
 use ModernAuthLab\Session\NativeSession;
 use ModernAuthLab\Session\SessionCookieOptions;
 use ModernAuthLab\Support\EnvLoader;
-use PDO;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
@@ -176,10 +176,11 @@ function createTotpSetupController(): TotpSetupController
             new UserTotpCredentialRepository($pdo),
             $totpConfig->protector(),
         ),
+        new TotpQrCodeRenderer(),
     );
 }
 
-function createApplicationConnection(): PDO
+function createApplicationConnection(): \PDO
 {
     $pdo = (new SqliteConnectionFactory(DatabaseConfig::default(dirname(__DIR__))))->connect();
     $migrationRepository = new MigrationRepository($pdo);

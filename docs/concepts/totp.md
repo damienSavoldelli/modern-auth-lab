@@ -537,10 +537,62 @@ Recording `last_used_time_step` during confirmation prepares replay prevention. 
 
 What is still not done yet:
 
-- QR code rendering;
 - TOTP requirement during login;
 - TOTP-specific rate limiting;
 - recovery/reset flow.
+
+## QR Code Rendering
+
+The QR code is not a new authentication secret.
+
+It is a visual representation of the existing `otpauth://` provisioning URI.
+
+Conceptually:
+
+```text
+TotpSecret
+    -> Base32
+    -> otpauth:// URI
+    -> QR code image
+    -> authenticator app scan
+```
+
+The QR code contains the same secret-bearing provisioning data already shown in text form on the setup page. Scanning it is just easier than manually copying the Base32 secret and parameters.
+
+The project renders the QR code as an inline SVG data URI:
+
+```text
+data:image/svg+xml;base64,...
+```
+
+Why inline SVG data URI:
+
+- no QR file is written to disk;
+- no extra public route is needed to serve the QR;
+- the QR exists only in the authenticated setup page response;
+- tests can verify that a real SVG QR payload is produced.
+
+Security implications:
+
+- the QR code must be treated like the `otpauth://` URI because it contains the TOTP secret;
+- it must not be logged;
+- it must not be stored as an asset;
+- it should only appear during enrollment setup;
+- future hardening should add cache-control headers for secret-bearing pages.
+
+The project uses a dedicated QR code dependency instead of hand-rolling QR generation. QR encoding includes matrix generation, error correction, data modes, masks, and output rendering. Reimplementing that logic would add unnecessary security and compatibility risk for this project.
+
+The dependency is isolated behind a small project service:
+
+```text
+TotpSetupController
+    -> TotpQrCodeRenderer
+    -> chillerlan/php-qrcode
+```
+
+This keeps the HTTP controller independent from the third-party API. If the QR library changes later, the expected edit should stay mostly inside `TotpQrCodeRenderer`.
+
+No interface is introduced yet. For this milestone, an interface would not add much value because the project has only one QR rendering implementation and the controller tests can use the real renderer safely. A dedicated interface becomes useful later if the project needs multiple QR renderers, a fake renderer for broader tests, or a frontend/client-side QR strategy.
 
 ## Multi-Device Behavior
 

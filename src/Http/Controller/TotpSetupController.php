@@ -8,6 +8,7 @@ use ModernAuthLab\Application\Totp\TotpEnrollmentService;
 use ModernAuthLab\Http\Response;
 use ModernAuthLab\Security\Csrf\CsrfTokenException;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
+use ModernAuthLab\Security\Totp\TotpQrCodeRenderer;
 use ModernAuthLab\Session\AuthSession;
 use RuntimeException;
 
@@ -25,11 +26,13 @@ final readonly class TotpSetupController
      * @param AuthSession $session Current authentication session facade.
      * @param CsrfTokenManager $csrf CSRF token manager for setup confirmation.
      * @param TotpEnrollmentService $enrollment TOTP enrollment application service.
+     * @param TotpQrCodeRenderer $qrCodes QR code renderer for provisioning URIs.
      */
     public function __construct(
         private AuthSession $session,
         private CsrfTokenManager $csrf,
         private TotpEnrollmentService $enrollment,
+        private TotpQrCodeRenderer $qrCodes,
     ) {}
 
     /**
@@ -58,6 +61,7 @@ final readonly class TotpSetupController
 
         return Response::html($this->renderSetupPage(
             $result->provisioningUri,
+            $this->qrCodes->renderDataUri($result->provisioningUri),
             $result->secretBase32,
             $result->created,
             $this->csrf->issue(self::CSRF_TOKEN_ID)->value,
@@ -97,12 +101,14 @@ final readonly class TotpSetupController
 
     private function renderSetupPage(
         string $provisioningUri,
+        string $qrCodeDataUri,
         string $secretBase32,
         bool $created,
         string $csrfToken,
         ?string $error = null,
     ): string {
         $escapedUri = htmlspecialchars($provisioningUri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $escapedQrCodeDataUri = htmlspecialchars($qrCodeDataUri, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $escapedSecret = htmlspecialchars($secretBase32, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $escapedToken = htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         $status = $created ? 'New pending TOTP enrollment created.' : 'Pending TOTP enrollment resumed.';
@@ -123,6 +129,10 @@ final readonly class TotpSetupController
                         <h1>TOTP Setup</h1>
                         <p>{$status}</p>
                         {$errorHtml}
+                        <section aria-labelledby="qr-code-title">
+                            <h2 id="qr-code-title">QR Code</h2>
+                            <img src="{$escapedQrCodeDataUri}" alt="TOTP setup QR code" width="256" height="256">
+                        </section>
                         <section aria-labelledby="provisioning-uri-title">
                             <h2 id="provisioning-uri-title">Provisioning URI</h2>
                             <textarea readonly rows="6" cols="80">{$escapedUri}</textarea>
@@ -164,6 +174,7 @@ final readonly class TotpSetupController
 
         return Response::html($this->renderSetupPage(
             $result->provisioningUri,
+            $this->qrCodes->renderDataUri($result->provisioningUri),
             $result->secretBase32,
             false,
             $this->csrf->issue(self::CSRF_TOKEN_ID)->value,
