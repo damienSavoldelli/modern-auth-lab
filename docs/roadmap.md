@@ -152,7 +152,18 @@ Out of scope for `v0.6.0`:
 - User-facing TOTP disable/reset flow.
 - SMS or email OTP.
 
-### `v0.7.0 - TOTP Lifecycle And Recovery`
+### `v0.6.1 - Historical Implementation Notes`
+
+Goal: complete historical implementation notes for earlier milestones and improve agent documentation guidance.
+
+Delivered scope:
+
+- Agent documentation reading map.
+- Agent documentation update rules.
+- Historical implementation notes for `v0.1.0` through `v0.4.0`.
+- Documentation-only patch release.
+
+### `v0.7.0 - TOTP Lifecycle And Recovery` _(in progress)_
 
 Goal: manage TOTP loss, reset, disable, and recovery behavior.
 

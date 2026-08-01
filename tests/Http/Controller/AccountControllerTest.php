@@ -39,6 +39,7 @@ final class AccountControllerTest extends TestCase
 
         self::assertSame(200, $response->statusCode);
         self::assertStringContainsString('<h1>Account</h1>', $response->body);
+        self::assertStringContainsString('<a href="/account/security">Account security</a>', $response->body);
         self::assertStringContainsString('<form method="post" action="/logout">', $response->body);
         self::assertStringContainsString('name="csrf_token"', $response->body);
         self::assertArrayHasKey('logout_form', $storage['_csrf_tokens']);
