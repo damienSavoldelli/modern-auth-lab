@@ -60,6 +60,179 @@ Expected capabilities:
 11. Add trusted-device and recovery behavior.
 12. Add coverage, mutation testing, and CI quality gates progressively.
 
+## Versioned Milestones
+
+This section tracks the concrete milestone roadmap used by the project.
+
+### Published
+
+- `v0.1.0 - Project Foundation`
+- `v0.1.1 - Agent / Workflow Updates`
+- `v0.2.0 - Session, CSRF And SQLite Foundation`
+- `v0.3.0 - User And Password Foundation`
+- `v0.4.0 - Full Session Login`
+- `v0.4.1 - Code Documentation Pass`
+
+### In Progress
+
+#### `v0.5.0 - TOTP Foundation`
+
+Goal: build authenticator-app TOTP foundations before wiring TOTP into login.
+
+Planned branches:
+
+- `feature/totp-domain`
+  - Base32 encoding and decoding.
+  - TOTP secret generation and validation.
+  - `otpauth://` provisioning URI generation.
+  - HOTP/TOTP code generation.
+  - TOTP enrollment parameter decision.
+  - TOTP code verification with a small time-window tolerance.
+- `feature/totp-persistence`
+  - SQLite migration for TOTP enrollments.
+  - Repository for TOTP enrollment records.
+  - Store user id, secret, algorithm, digits, period, status, confirmation timestamp, and last used time step.
+  - Integration tests for persistence behavior.
+- `feature/totp-enrollment`
+  - Start a pending TOTP enrollment.
+  - Generate a pending secret.
+  - Produce an `otpauth://` provisioning URI.
+  - Confirm enrollment with a valid TOTP code.
+  - Activate TOTP only after confirmation.
+  - Add initial TOTP security events.
+
+Out of scope for `v0.5.0`:
+
+- Requiring TOTP during login.
+- Replacing the password-only full session login flow.
+- Passkeys/WebAuthn.
+- Trusted devices.
+- Recovery flows.
+- SMS or email OTP.
+- Complex frontend enrollment UI.
+
+### Upcoming
+
+#### `v0.6.0 - Password + TOTP Flow`
+
+Goal: require TOTP after password verification.
+
+Planned scope:
+
+- Password success moves the session to `mfa_pending`.
+- TOTP challenge form.
+- Valid TOTP code moves the session to `fully_authenticated`.
+- TOTP-specific rate limiting.
+- Effective anti-replay using the last accepted time step.
+- Security events for TOTP success and failure.
+- Tests for the complete Password + TOTP login flow.
+
+#### `v0.7.0 - Passkey / WebAuthn Foundation`
+
+Goal: add WebAuthn registration and authentication primitives.
+
+Planned scope:
+
+- Registration challenge generation.
+- Authentication challenge generation.
+- Credential storage model.
+- Origin, RP ID, challenge, user presence, and user verification validation.
+- Signature counter handling when available.
+- Backend tests and focused frontend WebAuthn modules.
+
+#### `v0.8.0 - Password + Passkey Flow`
+
+Goal: add the Password + Passkey authentication path.
+
+Planned scope:
+
+- Password plus Passkey login.
+- Multiple Passkeys per user.
+- Passkey naming.
+- Individual Passkey revocation.
+- Last-used tracking.
+- Cross-device authentication support.
+
+#### `v0.9.0 - Secure Fallback Strategy`
+
+Goal: add controlled fallback for MFA recovery.
+
+Planned scope:
+
+- Controlled TOTP fallback for Passkey users.
+- Fallback eligibility rules.
+- Known environment checks.
+- Coherent IP/browser checks.
+- Suspicious environment detection.
+- Security events for fallback attempts.
+
+#### `v0.10.0 - Trusted Devices And Recovery`
+
+Goal: add auditable device and recovery lifecycle behavior.
+
+Planned scope:
+
+- Trusted device records.
+- Device revocation.
+- Lost-device handling.
+- Recovery flows.
+- Recovery security events.
+
+#### `v0.11.0 - Quality Gates And CI/CD`
+
+Goal: automate project quality checks.
+
+Planned scope:
+
+- GitHub Actions backend checks.
+- GitHub Actions frontend checks.
+- PHPUnit coverage.
+- Vitest coverage.
+- PHPStan.
+- PHP CS Fixer.
+- ESLint.
+- Prettier.
+- Progressive quality gates.
+
+#### `v0.12.0 - Mutation Testing`
+
+Goal: measure test strength beyond coverage percentage.
+
+Planned scope:
+
+- Infection PHP.
+- StrykerJS.
+- Progressive mutation score targets.
+- Documentation about coverage vs mutation testing.
+
+#### `v1.0.0 - Modern Auth Lab JavaScript Edition`
+
+Goal: complete the vanilla JavaScript and PHP authentication lab.
+
+Expected scope:
+
+- Password + TOTP flow.
+- Password + Passkey flow.
+- Secure fallback strategy.
+- Trusted devices.
+- Multi-passkey lifecycle.
+- Recovery behavior.
+- Coverage.
+- Mutation testing.
+- CI/CD.
+- Complete documentation.
+
+#### `v1.1.0 - TypeScript Frontend Migration`
+
+Goal: improve frontend type safety and developer experience.
+
+Expected scope:
+
+- Migrate frontend modules to TypeScript.
+- Add WebAuthn type modeling.
+- Improve frontend test structure.
+- Add TypeScript-aware checks.
+
 ## Explicit Non-Goals For Early Stages
 
 - No Laravel or Symfony at the beginning.
