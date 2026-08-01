@@ -112,6 +112,45 @@ The project keeps these values configurable:
 
 Defaulting to `SHA1`, `6` digits, and `30` seconds is a compatibility choice. SHA1 is not recommended for new general-purpose signatures, but TOTP commonly uses HMAC-SHA1 with a shared secret and short time window. The class remains configurable so stronger algorithms can be tested without changing the provisioning model.
 
+## Code Generation
+
+TOTP code generation is deterministic.
+
+The authenticator app and the server do not communicate when a code is generated. They independently compute the same code because they share:
+
+- the same secret;
+- the same algorithm;
+- the same number of digits;
+- the same period;
+- approximately the same time.
+
+Conceptually:
+
+```text
+TOTP code = function(secret, current time, algorithm, digits, period)
+```
+
+TOTP is based on HOTP:
+
+```text
+HOTP = secret + counter
+TOTP = secret + time-derived counter
+```
+
+For TOTP, the counter is:
+
+```text
+counter = floor(timestamp / period)
+```
+
+With the common 30-second period, every timestamp in the same 30-second time step produces the same code.
+
+This project generates codes as strings, not integers, because leading zeroes are valid:
+
+```text
+000123
+```
+
 ## Multi-Device Behavior
 
 TOTP is not device-specific.
