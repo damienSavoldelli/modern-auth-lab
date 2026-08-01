@@ -151,6 +151,68 @@ This project generates codes as strings, not integers, because leading zeroes ar
 000123
 ```
 
+## Code Verification Window
+
+TOTP verification usually accepts a small clock window.
+
+With:
+
+```text
+window = 1
+```
+
+the server checks:
+
+```text
+currentStep - 1
+currentStep
+currentStep + 1
+```
+
+In other words:
+
+- previous step;
+- current step;
+- next step.
+
+If the period is 30 seconds, this tolerates approximately:
+
+```text
+30 seconds before
+30 seconds after
+```
+
+Important: this does not mean the same code is valid for exactly 90 seconds. It means the server accepts codes calculated for three possible time steps.
+
+Example:
+
+```text
+period = 30
+window = 1
+server timestamp = 12:00:31
+currentStep = floor(timestamp / 30)
+```
+
+The server tests:
+
+- code for the previous step;
+- code for the current step;
+- code for the next step.
+
+This is useful when:
+
+- the phone clock is slightly behind;
+- the server clock is slightly ahead;
+- the user submits a code close to the moment it expires.
+
+The window should stay small:
+
+- with `window = 2`, the server accepts 5 steps;
+- with `window = 3`, the server accepts 7 steps;
+- the brute-force surface increases as the number of accepted steps grows.
+
+For this project, `window = 1` is the default compromise: understandable, realistic, and still narrow.
+
 ## Per-Enrollment Parameters
 
 The TOTP parameters used during enrollment must be treated as part of that enrollment.

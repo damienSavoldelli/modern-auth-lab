@@ -57,11 +57,44 @@ final readonly class TotpGenerator
      */
     public function generate(TotpSecret $secret, int $timestamp): string
     {
+        return $this->generateForTimeStep($secret, $this->timeStep($timestamp));
+    }
+
+    /**
+     * Generate the TOTP code expected for an already computed time step.
+     *
+     * @param TotpSecret $secret Shared TOTP secret.
+     * @param int $timeStep Time-derived moving factor.
+     *
+     * @return string Zero-padded TOTP code.
+     *
+     * @throws InvalidArgumentException When the time step is negative.
+     */
+    public function generateForTimeStep(TotpSecret $secret, int $timeStep): string
+    {
+        if ($timeStep < 0) {
+            throw new InvalidArgumentException('TOTP time step cannot be negative.');
+        }
+
+        return $this->hotp($secret, $timeStep);
+    }
+
+    /**
+     * Convert a unix timestamp into a TOTP time step.
+     *
+     * @param int $timestamp Unix timestamp in seconds.
+     *
+     * @return int Time-derived moving factor.
+     *
+     * @throws InvalidArgumentException When the timestamp is negative.
+     */
+    public function timeStep(int $timestamp): int
+    {
         if ($timestamp < 0) {
             throw new InvalidArgumentException('TOTP timestamp cannot be negative.');
         }
 
-        return $this->hotp($secret, intdiv($timestamp, $this->period));
+        return intdiv($timestamp, $this->period);
     }
 
     /**
