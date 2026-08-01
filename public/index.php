@@ -26,7 +26,9 @@ use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\Password\PasswordHasher;
 use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
+use ModernAuthLab\Security\Totp\TotpChallengeRateLimiter;
 use ModernAuthLab\Security\Totp\TotpQrCodeRenderer;
+use ModernAuthLab\Security\Totp\TotpRateLimitConfig;
 use ModernAuthLab\Security\Totp\TotpSecretEncryptionConfig;
 use ModernAuthLab\Session\NativeSession;
 use ModernAuthLab\Session\SessionCookieOptions;
@@ -206,6 +208,7 @@ function createTotpChallengeController(): TotpChallengeController
     }
 
     $totpConfig = TotpSecretEncryptionConfig::fromEnvironment($environment);
+    $rateLimitConfig = TotpRateLimitConfig::fromEnvironment($environment);
 
     return new TotpChallengeController(
         $authSession,
@@ -214,6 +217,8 @@ function createTotpChallengeController(): TotpChallengeController
             new UserTotpCredentialRepository($pdo),
             $totpConfig->protector(),
         ),
+        new TotpChallengeRateLimiter($_SESSION, $rateLimitConfig),
+        clientIp(),
         static fn() => $nativeSession->rotateId(),
     );
 }

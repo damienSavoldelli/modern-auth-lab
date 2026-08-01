@@ -14,7 +14,9 @@ use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUserTotpCredential
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
+use ModernAuthLab\Security\Totp\TotpChallengeRateLimiter;
 use ModernAuthLab\Security\Totp\TotpGenerator;
+use ModernAuthLab\Security\Totp\TotpRateLimitConfig;
 use ModernAuthLab\Security\Totp\TotpSecret;
 use ModernAuthLab\Security\Totp\TotpSecretProtector;
 use ModernAuthLab\Session\AuthSession;
@@ -31,6 +33,8 @@ final class TotpChallengeControllerTest extends TestCase
             new AuthSession($storage),
             new CsrfTokenManager($storage),
             $this->verificationService(),
+            $this->rateLimiter($storage),
+            '127.0.0.1',
             static function (): void {},
         );
 
@@ -49,6 +53,8 @@ final class TotpChallengeControllerTest extends TestCase
             $session,
             new CsrfTokenManager($storage),
             $this->verificationService(),
+            $this->rateLimiter($storage),
+            '127.0.0.1',
             static function (): void {},
         );
 
@@ -67,6 +73,8 @@ final class TotpChallengeControllerTest extends TestCase
             $session,
             new CsrfTokenManager($storage),
             $this->verificationService(),
+            $this->rateLimiter($storage),
+            '127.0.0.1',
             static function (): void {},
         );
 
@@ -85,6 +93,8 @@ final class TotpChallengeControllerTest extends TestCase
             $session,
             new CsrfTokenManager($storage),
             $this->verificationService(),
+            $this->rateLimiter($storage),
+            '127.0.0.1',
             static function (): void {},
         );
 
@@ -105,6 +115,8 @@ final class TotpChallengeControllerTest extends TestCase
             new AuthSession($storage),
             new CsrfTokenManager($storage),
             $this->verificationService(),
+            $this->rateLimiter($storage),
+            '127.0.0.1',
             static function (): void {},
         );
 
@@ -126,6 +138,8 @@ final class TotpChallengeControllerTest extends TestCase
             $session,
             new CsrfTokenManager($storage),
             $this->verificationService(),
+            $this->rateLimiter($storage),
+            '127.0.0.1',
             static function (): void {},
         );
 
@@ -149,6 +163,8 @@ final class TotpChallengeControllerTest extends TestCase
             $session,
             $csrf,
             $this->verificationService(),
+            $this->rateLimiter($storage),
+            '127.0.0.1',
             static function (): void {},
         );
         $token = $csrf->issue('totp_challenge_form');
@@ -179,6 +195,8 @@ final class TotpChallengeControllerTest extends TestCase
             $session,
             $csrf,
             new TotpLoginVerificationService($credentials, $secretProtector),
+            $this->rateLimiter($storage),
+            '127.0.0.1',
             static function () use (&$rotated): void {
                 $rotated = true;
             },
@@ -199,12 +217,106 @@ final class TotpChallengeControllerTest extends TestCase
         self::assertTrue($rotated);
     }
 
+    public function testRateLimitsRepeatedInvalidTotpCodes(): void
+    {
+        $storage = [];
+        $session = new AuthSession($storage);
+        $session->markMfaPending(123, 'user@example.com');
+        $csrf = new CsrfTokenManager($storage);
+        $controller = new TotpChallengeController(
+            $session,
+            $csrf,
+            $this->verificationService(),
+            $this->rateLimiter($storage, maxAttempts: 2),
+            '127.0.0.1',
+            static function (): void {},
+        );
+
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            $token = $csrf->issue('totp_challenge_form');
+            $controller->submit([
+                'csrf_token' => $token->value,
+                'code' => '123456',
+            ]);
+        }
+
+        $token = $csrf->issue('totp_challenge_form');
+        $response = $controller->submit([
+            'csrf_token' => $token->value,
+            'code' => '123456',
+        ]);
+
+        self::assertSame(429, $response->statusCode);
+        self::assertStringContainsString('Too many attempts. Try again later.', $response->body);
+        self::assertSame(AuthSessionState::MfaPending, $session->state());
+    }
+
+    public function testClearsTotpRateLimitAfterSuccessfulChallenge(): void
+    {
+        $storage = [];
+        $rotated = false;
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $credentials = new UserTotpCredentialRepository($pdo);
+        $secretProtector = new TotpSecretProtector(str_repeat('a', 32), 'local');
+        $secret = $this->activateTotp($credentials, $secretProtector, $user->id, $user->email);
+        $session = new AuthSession($storage);
+        $session->markMfaPending($user->id, $user->email);
+        $csrf = new CsrfTokenManager($storage);
+        $controller = new TotpChallengeController(
+            $session,
+            $csrf,
+            new TotpLoginVerificationService($credentials, $secretProtector),
+            $this->rateLimiter($storage, maxAttempts: 2),
+            '127.0.0.1',
+            static function () use (&$rotated): void {
+                $rotated = true;
+            },
+        );
+        $firstInvalidToken = $csrf->issue('totp_challenge_form');
+        $controller->submit([
+            'csrf_token' => $firstInvalidToken->value,
+            'code' => '123456',
+        ]);
+        $validToken = $csrf->issue('totp_challenge_form');
+        $validCode = (new TotpGenerator())->generate($secret, time());
+
+        $response = $controller->submit([
+            'csrf_token' => $validToken->value,
+            'code' => $validCode,
+        ]);
+
+        self::assertSame(303, $response->statusCode);
+        self::assertSame(['Location' => '/account'], $response->headers);
+        self::assertTrue($rotated);
+        self::assertTrue($this->rateLimiter($storage, maxAttempts: 2)->isAllowed($this->rateLimitIdentifier($user->id)));
+    }
+
     private function verificationService(): TotpLoginVerificationService
     {
         return new TotpLoginVerificationService(
             new UserTotpCredentialRepository($this->createMigratedConnection()),
             new TotpSecretProtector(str_repeat('a', 32), 'local'),
         );
+    }
+
+    /**
+     * @param array<string, mixed> $storage
+     */
+    private function rateLimiter(array &$storage, int $maxAttempts = 5, int $lockSeconds = 300): TotpChallengeRateLimiter
+    {
+        return new TotpChallengeRateLimiter(
+            $storage,
+            TotpRateLimitConfig::fromEnvironment([
+                'TOTP_RATE_LIMIT_MAX_ATTEMPTS' => (string) $maxAttempts,
+                'TOTP_RATE_LIMIT_LOCK_SECONDS' => (string) $lockSeconds,
+            ]),
+        );
+    }
+
+    private function rateLimitIdentifier(int $userId): string
+    {
+        return hash('sha256', $userId . '|127.0.0.1');
     }
 
     private function activateTotp(

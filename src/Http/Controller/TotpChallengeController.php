@@ -9,6 +9,7 @@ use ModernAuthLab\Application\Totp\TotpLoginVerificationService;
 use ModernAuthLab\Http\Response;
 use ModernAuthLab\Security\Csrf\CsrfTokenException;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
+use ModernAuthLab\Security\Totp\TotpChallengeRateLimiter;
 use ModernAuthLab\Session\AuthSession;
 use ModernAuthLab\Session\AuthSessionState;
 
@@ -27,12 +28,16 @@ final readonly class TotpChallengeController
      * @param AuthSession $session Current authentication session facade.
      * @param CsrfTokenManager $csrf CSRF token manager for challenge submission.
      * @param TotpLoginVerificationService $verification TOTP login verification service.
+     * @param TotpChallengeRateLimiter $rateLimiter TOTP challenge throttling control.
+     * @param string $clientIp Server-observed client IP.
      * @param Closure(): void $rotateSessionId Session id rotation callback.
      */
     public function __construct(
         private AuthSession $session,
         private CsrfTokenManager $csrf,
         private TotpLoginVerificationService $verification,
+        private TotpChallengeRateLimiter $rateLimiter,
+        private string $clientIp,
         private Closure $rotateSessionId,
     ) {}
 
@@ -78,11 +83,19 @@ final readonly class TotpChallengeController
             return Response::redirect('/login');
         }
 
+        $rateLimitIdentifier = $this->rateLimitIdentifier($userId);
+        if (! $this->rateLimiter->isAllowed($rateLimitIdentifier)) {
+            return $this->failedChallengeResponse(429, 'Too many attempts. Try again later.');
+        }
+
         $result = $this->verification->verify($userId, $this->stringValue($post['code'] ?? null));
         if (! $result->success) {
+            $this->rateLimiter->recordFailure($rateLimitIdentifier);
+
             return $this->failedChallengeResponse();
         }
 
+        $this->rateLimiter->clear($rateLimitIdentifier);
         $this->session->markFullyAuthenticated($userId, $email);
         ($this->rotateSessionId)();
 
@@ -102,14 +115,14 @@ final readonly class TotpChallengeController
         return null;
     }
 
-    private function failedChallengeResponse(): Response
+    private function failedChallengeResponse(int $statusCode = 400, string $message = 'Invalid authenticator code.'): Response
     {
         return Response::html(
             $this->renderForm(
                 $this->csrf->issue(self::CSRF_TOKEN_ID)->value,
-                'Invalid authenticator code.',
+                $message,
             ),
-            400,
+            $statusCode,
         );
     }
 
@@ -149,5 +162,10 @@ final readonly class TotpChallengeController
     private function stringValue(mixed $value): string
     {
         return is_string($value) ? $value : '';
+    }
+
+    private function rateLimitIdentifier(int $userId): string
+    {
+        return hash('sha256', $userId . '|' . $this->clientIp);
     }
 }
