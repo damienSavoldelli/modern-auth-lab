@@ -4,6 +4,48 @@ All notable changes to Modern Auth Lab will be documented in this file.
 
 The format follows Keep a Changelog conventions, and this project uses semantic versioning for project milestones.
 
+## [0.5.0] - 2026-08-01
+
+### Added
+
+- Added pure TOTP domain primitives:
+  - Base32 encoding and decoding.
+  - TOTP secret generation and validation.
+  - `otpauth://` provisioning URI generation.
+  - TOTP code generation and verification.
+- Added SQLite persistence for TOTP credentials.
+- Added protected storage model for TOTP secrets with Sodium `secretbox`.
+- Added `.env.example` and local `.env.local` loading for TOTP encryption key configuration.
+- Added authenticated TOTP setup page at `GET /account/totp/setup`.
+- Added TOTP enrollment confirmation at `POST /account/totp/setup`.
+- Added QR code rendering for authenticator-app enrollment.
+- Added documentation and ADRs for TOTP enrollment parameters, secret storage, encryption, key configuration, and QR code rendering.
+
+### Changed
+
+- Updated authenticated session state to carry the authenticated user id and email.
+- Updated the account page with a TOTP setup link.
+
+### Verified
+
+- `composer validate --strict`
+- `composer test`
+- `composer analyse`
+- `composer cs:check`
+- `npm run build`
+- `npm test`
+- `npm run lint`
+- `npm run format`
+
+### Not Included Yet
+
+- TOTP requirement during login.
+- TOTP challenge after password login.
+- TOTP-specific login rate limiting.
+- Recovery/reset flows.
+- Trusted devices.
+- Passkeys/WebAuthn.
+
 ## [0.4.1] - 2026-06-28
 
 ### Added
@@ -155,6 +197,7 @@ The format follows Keep a Changelog conventions, and this project uses semantic 
 - SQLite/libSQL persistence.
 - CI/CD.
 
+[0.5.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.5.0
 [0.4.1]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.4.1
 [0.4.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.4.0
 [0.3.0]: https://github.com/damienSavoldelli/modern-auth-lab/releases/tag/v0.3.0
