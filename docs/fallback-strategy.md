@@ -2,6 +2,13 @@
 
 Fallback exists to preserve account recovery and usability without turning MFA into a bypass.
 
+TOTP lost-authenticator recovery and future Passkey fallback are related but not identical:
+
+- TOTP recovery helps a user regain access when they cannot produce their current TOTP code.
+- Passkey fallback helps a user complete authentication when the primary Passkey path is unavailable.
+
+Both must be controlled server-side and auditable, but they may use different eligibility rules.
+
 ## Principle
 
 TOTP fallback for Passkey users is controlled access. It is not a public alternate login path.
