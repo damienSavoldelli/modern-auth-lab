@@ -35,6 +35,30 @@ The distinction matters:
 - compromising the secret compromises all future codes;
 - compromising one code should only affect a short time window.
 
+## Simple Mental Model
+
+Think about the TOTP flow in three different layers:
+
+```text
+Base32      = text format used to transport/display the secret
+TotpSecret  = server-side object that represents an acceptable shared secret
+TOTP code   = short six-digit code generated later from the secret + current time
+```
+
+What has been implemented first in `v0.5.0`:
+
+- `Base32`, because authenticator apps expect secrets in this format;
+- `TotpSecret`, because the project needs a safe object for generating and validating shared secrets.
+
+What has not been implemented yet:
+
+- the `otpauth://` URI;
+- the QR code;
+- the six-digit TOTP code calculation;
+- the submitted-code verification flow.
+
+So Base32 and `TotpSecret` are not the login code shown by the authenticator app. They are the foundation that allows the app and the server to share the same secret before codes can be generated.
+
 ## The `otpauth://` URI
 
 Authenticator apps commonly understand URIs shaped like this:
