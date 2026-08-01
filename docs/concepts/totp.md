@@ -546,6 +546,17 @@ server reuses the same pending secret
 
 This avoids generating a new secret on every refresh and keeps the setup experience understandable. A future reset/restart action can explicitly revoke or replace pending setup state.
 
+Pending enrollments expire lazily.
+
+This means the project does not run a background cleanup job yet. Instead:
+
+- setup start checks whether an existing pending credential is still fresh;
+- expired pending credentials are revoked before replacement;
+- setup confirmation checks expiration before accepting the first code;
+- expired pending credentials are revoked and cannot become active.
+
+Lazy expiration is enough for the current local lab because pending credentials do not grant authentication and their secrets are encrypted. A future cleanup command can revoke old pending rows in bulk when the project introduces operational jobs or retention policy.
+
 What is not done yet:
 
 - no QR code rendering;
