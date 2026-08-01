@@ -52,11 +52,19 @@ final class AuthSession
     /**
      * Mark the session as waiting for MFA completion.
      *
+     * The pending MFA challenge must retain the already verified user identity
+     * so the second-factor controller can load the correct credential without
+     * asking for the account identifier again.
+     *
+     * @param int|null $userId Verified user id to carry into the MFA challenge.
+     * @param string|null $email Verified user email to carry into the MFA challenge.
+     *
      * @return void
      */
-    public function markMfaPending(): void
+    public function markMfaPending(?int $userId = null, ?string $email = null): void
     {
         $this->storage[self::AUTH_STATE_KEY] = AuthSessionState::MfaPending->value;
+        $this->storeUserIdentity($userId, $email);
     }
 
     /**
@@ -67,14 +75,7 @@ final class AuthSession
     public function markFullyAuthenticated(?int $userId = null, ?string $email = null): void
     {
         $this->storage[self::AUTH_STATE_KEY] = AuthSessionState::FullyAuthenticated->value;
-
-        if ($userId !== null) {
-            $this->storage[self::AUTH_USER_ID_KEY] = $userId;
-        }
-
-        if ($email !== null) {
-            $this->storage[self::AUTH_USER_EMAIL_KEY] = $email;
-        }
+        $this->storeUserIdentity($userId, $email);
     }
 
     /**
@@ -113,5 +114,24 @@ final class AuthSession
             $this->storage[self::AUTH_USER_ID_KEY],
             $this->storage[self::AUTH_USER_EMAIL_KEY],
         );
+    }
+
+    /**
+     * Store verified user identity values when they are available.
+     *
+     * @param int|null $userId Verified user id.
+     * @param string|null $email Verified user email.
+     *
+     * @return void
+     */
+    private function storeUserIdentity(?int $userId, ?string $email): void
+    {
+        if ($userId !== null) {
+            $this->storage[self::AUTH_USER_ID_KEY] = $userId;
+        }
+
+        if ($email !== null) {
+            $this->storage[self::AUTH_USER_EMAIL_KEY] = $email;
+        }
     }
 }
