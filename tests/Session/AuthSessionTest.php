@@ -39,6 +39,23 @@ final class AuthSessionTest extends TestCase
         self::assertSame(AuthSessionState::MfaPending, $session->state());
     }
 
+    public function testTracksMfaPendingStateWithVerifiedUserIdentity(): void
+    {
+        $storage = [];
+        $session = new AuthSession($storage);
+
+        $session->markMfaPending(123, 'user@example.com');
+
+        self::assertSame(AuthSessionState::MfaPending, $session->state());
+        self::assertSame(123, $session->userId());
+        self::assertSame('user@example.com', $session->userEmail());
+        self::assertSame([
+            'auth_state' => 'mfa_pending',
+            'auth_user_id' => 123,
+            'auth_user_email' => 'user@example.com',
+        ], $storage);
+    }
+
     public function testTracksFullyAuthenticatedState(): void
     {
         $storage = [];

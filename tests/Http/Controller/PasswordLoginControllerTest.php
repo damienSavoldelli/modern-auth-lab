@@ -12,8 +12,10 @@ use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRunner;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateSecurityEventsTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUsersTable;
+use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUserTotpCredentialsTable;
 use ModernAuthLab\Infrastructure\Persistence\SecurityEventRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
+use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\Password\PasswordHasher;
 use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
@@ -59,6 +61,31 @@ final class PasswordLoginControllerTest extends TestCase
         $session = new AuthSession($storage);
         self::assertSame(AuthSessionState::FullyAuthenticated, $session->state());
         self::assertNotNull($session->userId());
+        self::assertSame('user@example.com', $session->userEmail());
+        self::assertTrue($rotated);
+        self::assertSame(SecurityEventType::PasswordLoginSucceeded->value, $this->events->all()[0]['type']);
+    }
+
+    public function testMarksMfaPendingAndRotatesSessionWhenUserHasActiveTotp(): void
+    {
+        $storage = [];
+        $rotated = false;
+        $controller = $this->createController($storage, static function () use (&$rotated): void {
+            $rotated = true;
+        }, hasActiveTotp: true);
+        $token = (new CsrfTokenManager($storage))->issue('login_form');
+
+        $response = $controller->submit([
+            'csrf_token' => $token->value,
+            'email' => 'user@example.com',
+            'password' => 'correct password',
+        ]);
+
+        self::assertSame(303, $response->statusCode);
+        self::assertSame(['Location' => '/login/totp'], $response->headers);
+        $session = new AuthSession($storage);
+        self::assertSame(AuthSessionState::MfaPending, $session->state());
+        self::assertSame(1, $session->userId());
         self::assertSame('user@example.com', $session->userEmail());
         self::assertTrue($rotated);
         self::assertSame(SecurityEventType::PasswordLoginSucceeded->value, $this->events->all()[0]['type']);
@@ -135,18 +162,36 @@ final class PasswordLoginControllerTest extends TestCase
     /**
      * @param array<string, mixed> $storage
      */
-    private function createController(array &$storage, ?\Closure $rotateSessionId = null): PasswordLoginController
-    {
+    private function createController(
+        array &$storage,
+        ?\Closure $rotateSessionId = null,
+        bool $hasActiveTotp = false,
+    ): PasswordLoginController {
         $passwords = new PasswordHasher();
         $pdo = $this->createMigratedConnection();
         $users = new UserRepository($pdo);
-        $users->create('user@example.com', $passwords->hash('correct password'));
+        $user = $users->create('user@example.com', $passwords->hash('correct password'));
+        $totpCredentials = new UserTotpCredentialRepository($pdo);
         $this->events = new SecurityEventRepository($pdo);
+
+        if ($hasActiveTotp) {
+            $pending = $totpCredentials->createPending(
+                $user->id,
+                'test-ciphertext',
+                'test-nonce',
+                'local',
+                'SHA1',
+                6,
+                30,
+            );
+            $totpCredentials->confirm($pending->id);
+        }
 
         return new PasswordLoginController(
             new CsrfTokenManager($storage),
             new PasswordAuthenticator($users, $passwords),
             new AuthSession($storage),
+            $totpCredentials,
             new LoginRateLimiter($storage),
             new SecurityEventLogger($this->events),
             '127.0.0.1',
@@ -163,6 +208,7 @@ final class PasswordLoginControllerTest extends TestCase
         $runner = new MigrationRunner($pdo, new MigrationRepository($pdo), [
             new CreateUsersTable(),
             new CreateSecurityEventsTable(),
+            new CreateUserTotpCredentialsTable(),
         ]);
         $runner->run();
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ModernAuthLab\Application\Totp;
 
+use Closure;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredential;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Security\Totp\ProtectedTotpSecret;
@@ -25,17 +26,26 @@ final readonly class TotpEnrollmentService
     private const DEFAULT_ALGORITHM = 'SHA1';
     private const DEFAULT_DIGITS = 6;
     private const DEFAULT_PERIOD = 30;
+    private const DEFAULT_PENDING_LIFETIME_SECONDS = 1800;
 
     /**
      * @param UserTotpCredentialRepository $credentials TOTP persistence boundary.
      * @param TotpSecretProtector $secretProtector Secret encryption boundary.
      * @param string $issuer Service name shown inside authenticator apps.
+     * @param int $pendingLifetimeSeconds Maximum lifetime for pending enrollments.
+     * @param Closure(): int|null $now Optional clock for deterministic tests.
      */
     public function __construct(
         private UserTotpCredentialRepository $credentials,
         private TotpSecretProtector $secretProtector,
         private string $issuer = 'Modern Auth Lab',
-    ) {}
+        private int $pendingLifetimeSeconds = self::DEFAULT_PENDING_LIFETIME_SECONDS,
+        private ?Closure $now = null,
+    ) {
+        if ($this->pendingLifetimeSeconds < 1) {
+            throw new \InvalidArgumentException('TOTP pending enrollment lifetime must be greater than zero.');
+        }
+    }
 
     /**
      * Start a new pending enrollment or resume an existing pending enrollment.
@@ -56,9 +66,28 @@ final readonly class TotpEnrollmentService
 
         $pendingCredential = $this->credentials->findPendingByUserId($userId);
         if ($pendingCredential !== null) {
+            if ($this->isExpiredPending($pendingCredential)) {
+                $this->credentials->revoke($pendingCredential->id);
+
+                return $this->createPendingEnrollment($userId, $accountLabel);
+            }
+
             return $this->resultFromExistingPendingCredential($pendingCredential, $accountLabel);
         }
 
+        return $this->createPendingEnrollment($userId, $accountLabel);
+    }
+
+    /**
+     * Create and persist a new pending TOTP enrollment.
+     *
+     * @param int $userId Authenticated user id.
+     * @param string $accountLabel Account label shown inside authenticator apps.
+     *
+     * @return TotpEnrollmentStartResult Newly created pending enrollment.
+     */
+    private function createPendingEnrollment(int $userId, string $accountLabel): TotpEnrollmentStartResult
+    {
         $secret = TotpSecret::generate();
         $protectedSecret = $this->secretProtector->protect($secret);
         $credential = $this->credentials->createPending(
@@ -92,6 +121,12 @@ final readonly class TotpEnrollmentService
     {
         $credential = $this->credentials->findPendingByUserId($userId);
         if ($credential === null) {
+            return false;
+        }
+
+        if ($this->isExpiredPending($credential)) {
+            $this->credentials->revoke($credential->id);
+
             return false;
         }
 
@@ -141,5 +176,24 @@ final readonly class TotpEnrollmentService
             $credential->digits,
             $credential->period,
         ))->uri();
+    }
+
+    private function isExpiredPending(UserTotpCredential $credential): bool
+    {
+        $createdAt = strtotime($credential->createdAt . ' UTC');
+        if ($createdAt === false) {
+            throw new RuntimeException('TOTP pending credential creation timestamp is invalid.');
+        }
+
+        return $createdAt + $this->pendingLifetimeSeconds < $this->now();
+    }
+
+    private function now(): int
+    {
+        if ($this->now !== null) {
+            return ($this->now)();
+        }
+
+        return time();
     }
 }

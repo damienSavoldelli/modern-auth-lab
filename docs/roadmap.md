@@ -64,22 +64,35 @@ Expected capabilities:
 
 This section tracks the concrete milestone roadmap used by the project.
 
-### Published
+### `v0.1.0 - Project Foundation`
 
-- `v0.1.0 - Project Foundation`
-- `v0.1.1 - Agent / Workflow Updates`
-- `v0.2.0 - Session, CSRF And SQLite Foundation`
-- `v0.3.0 - User And Password Foundation`
-- `v0.4.0 - Full Session Login`
-- `v0.4.1 - Code Documentation Pass`
+Goal: establish the initial project foundation.
 
-### In Progress
+### `v0.1.1 - Agent / Workflow Updates`
 
-#### `v0.5.0 - TOTP Foundation`
+Goal: refine agent behavior, workflow rules, release formatting, and collaboration discipline.
+
+### `v0.2.0 - Session, CSRF And SQLite Foundation`
+
+Goal: introduce the first session, CSRF, and SQLite foundations.
+
+### `v0.3.0 - User And Password Foundation`
+
+Goal: introduce users, password hashing, password verification, and the minimal password login form.
+
+### `v0.4.0 - Full Session Login`
+
+Goal: complete the password-only session login flow before MFA enforcement.
+
+### `v0.4.1 - Code Documentation Pass`
+
+Goal: add professional PHPDoc and implementation comments to improve code readability.
+
+### `v0.5.0 - TOTP Foundation`
 
 Goal: build authenticator-app TOTP foundations before wiring TOTP into login.
 
-Planned branches:
+Delivered branches:
 
 - `feature/totp-domain`
   - Base32 encoding and decoding.
@@ -111,9 +124,11 @@ Out of scope for `v0.5.0`:
 - SMS or email OTP.
 - Complex frontend enrollment UI.
 
-### Upcoming
+### `v0.5.1 - Workflow Configuration`
 
-#### `v0.6.0 - Password + TOTP Flow`
+Goal: add project workflow configuration for PRs, releases, and local AI-agent settings.
+
+### `v0.6.0 - Password + TOTP Flow` _(in progress)_
 
 Goal: require TOTP after password verification.
 
@@ -125,9 +140,35 @@ Planned scope:
 - TOTP-specific rate limiting.
 - Effective anti-replay using the last accepted time step.
 - Security events for TOTP success and failure.
+- Pending TOTP enrollment expiration and cleanup behavior.
 - Tests for the complete Password + TOTP login flow.
 
-#### `v0.7.0 - Passkey / WebAuthn Foundation`
+Out of scope for `v0.6.0`:
+
+- Passkeys/WebAuthn.
+- Trusted devices.
+- Recovery codes.
+- Lost-authenticator recovery flow.
+- User-facing TOTP disable/reset flow.
+- SMS or email OTP.
+
+### `v0.7.0 - TOTP Lifecycle And Recovery`
+
+Goal: manage TOTP loss, reset, disable, and recovery behavior.
+
+Planned scope:
+
+- Account security page showing active TOTP status.
+- Disable TOTP when the user still has access to their authenticator.
+- Require recent authentication before disabling TOTP.
+- Require current TOTP code before normal TOTP disable.
+- Add recovery path when the authenticator is lost.
+- Add recovery codes or recovery challenge foundation.
+- Log TOTP disable, reset, recovery start, and recovery success/failure events.
+- Add user notification after TOTP disable or reset.
+- Document why authenticator apps cannot notify the server when an entry is deleted locally.
+
+### `v0.8.0 - Passkey / WebAuthn Foundation`
 
 Goal: add WebAuthn registration and authentication primitives.
 
@@ -140,7 +181,7 @@ Planned scope:
 - Signature counter handling when available.
 - Backend tests and focused frontend WebAuthn modules.
 
-#### `v0.8.0 - Password + Passkey Flow`
+### `v0.9.0 - Password + Passkey Flow`
 
 Goal: add the Password + Passkey authentication path.
 
@@ -153,7 +194,7 @@ Planned scope:
 - Last-used tracking.
 - Cross-device authentication support.
 
-#### `v0.9.0 - Secure Fallback Strategy`
+### `v0.10.0 - Secure Fallback Strategy`
 
 Goal: add controlled fallback for MFA recovery.
 
@@ -166,7 +207,7 @@ Planned scope:
 - Suspicious environment detection.
 - Security events for fallback attempts.
 
-#### `v0.10.0 - Trusted Devices And Recovery`
+### `v0.11.0 - Trusted Devices And Recovery`
 
 Goal: add auditable device and recovery lifecycle behavior.
 
@@ -178,7 +219,7 @@ Planned scope:
 - Recovery flows.
 - Recovery security events.
 
-#### `v0.11.0 - Quality Gates And CI/CD`
+### `v0.12.0 - Quality Gates And CI/CD`
 
 Goal: automate project quality checks.
 
@@ -194,7 +235,7 @@ Planned scope:
 - Prettier.
 - Progressive quality gates.
 
-#### `v0.12.0 - Mutation Testing`
+### `v0.13.0 - Mutation Testing`
 
 Goal: measure test strength beyond coverage percentage.
 
@@ -205,7 +246,7 @@ Planned scope:
 - Progressive mutation score targets.
 - Documentation about coverage vs mutation testing.
 
-#### `v1.0.0 - Modern Auth Lab JavaScript Edition`
+### `v1.0.0 - Modern Auth Lab JavaScript Edition`
 
 Goal: complete the vanilla JavaScript and PHP authentication lab.
 
@@ -222,7 +263,7 @@ Expected scope:
 - CI/CD.
 - Complete documentation.
 
-#### `v1.1.0 - TypeScript Frontend Migration`
+### `v1.1.0 - TypeScript Frontend Migration`
 
 Goal: improve frontend type safety and developer experience.
 

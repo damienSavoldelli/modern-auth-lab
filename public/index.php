@@ -6,11 +6,13 @@ use ModernAuthLab\Http\Response;
 use ModernAuthLab\Http\Controller\AccountController;
 use ModernAuthLab\Http\Controller\LogoutController;
 use ModernAuthLab\Http\Controller\PasswordLoginController;
+use ModernAuthLab\Http\Controller\TotpChallengeController;
 use ModernAuthLab\Http\Controller\TotpSetupController;
 use ModernAuthLab\Http\Router;
 use ModernAuthLab\Application\Auth\PasswordAuthenticator;
 use ModernAuthLab\Application\Security\SecurityEventLogger;
 use ModernAuthLab\Application\Totp\TotpEnrollmentService;
+use ModernAuthLab\Application\Totp\TotpLoginVerificationService;
 use ModernAuthLab\Infrastructure\Persistence\DatabaseConfig;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRunner;
@@ -24,7 +26,9 @@ use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\Password\PasswordHasher;
 use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
+use ModernAuthLab\Security\Totp\TotpChallengeRateLimiter;
 use ModernAuthLab\Security\Totp\TotpQrCodeRenderer;
+use ModernAuthLab\Security\Totp\TotpRateLimitConfig;
 use ModernAuthLab\Security\Totp\TotpSecretEncryptionConfig;
 use ModernAuthLab\Session\NativeSession;
 use ModernAuthLab\Session\SessionCookieOptions;
@@ -49,6 +53,18 @@ $router->get('/login', static function (): Response {
 
 $router->post('/login', static function (): Response {
     $controller = createPasswordLoginController();
+
+    return $controller->submit($_POST);
+});
+
+$router->get('/login/totp', static function (): Response {
+    $controller = createTotpChallengeController();
+
+    return $controller->show();
+});
+
+$router->post('/login/totp', static function (): Response {
+    $controller = createTotpChallengeController();
 
     return $controller->submit($_POST);
 });
@@ -150,6 +166,7 @@ function createPasswordLoginController(): PasswordLoginController
             new PasswordHasher(),
         ),
         $authSession,
+        new UserTotpCredentialRepository($pdo),
         new LoginRateLimiter($_SESSION),
         new SecurityEventLogger(new SecurityEventRepository($pdo)),
         clientIp(),
@@ -177,6 +194,33 @@ function createTotpSetupController(): TotpSetupController
             $totpConfig->protector(),
         ),
         new TotpQrCodeRenderer(),
+    );
+}
+
+function createTotpChallengeController(): TotpChallengeController
+{
+    [$nativeSession, $authSession] = createSessionContext();
+    $pdo = createApplicationConnection();
+    $environment = getenv();
+
+    if (! is_array($environment)) {
+        $environment = [];
+    }
+
+    $totpConfig = TotpSecretEncryptionConfig::fromEnvironment($environment);
+    $rateLimitConfig = TotpRateLimitConfig::fromEnvironment($environment);
+
+    return new TotpChallengeController(
+        $authSession,
+        new CsrfTokenManager($_SESSION),
+        new TotpLoginVerificationService(
+            new UserTotpCredentialRepository($pdo),
+            $totpConfig->protector(),
+        ),
+        new TotpChallengeRateLimiter($_SESSION, $rateLimitConfig),
+        new SecurityEventLogger(new SecurityEventRepository($pdo)),
+        clientIp(),
+        static fn() => $nativeSession->rotateId(),
     );
 }
 

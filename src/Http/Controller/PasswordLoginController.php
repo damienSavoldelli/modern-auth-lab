@@ -9,6 +9,7 @@ use ModernAuthLab\Application\Auth\PasswordAuthenticator;
 use ModernAuthLab\Application\Security\SecurityEventLogger;
 use ModernAuthLab\Domain\Security\SecurityEventType;
 use ModernAuthLab\Http\Response;
+use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenException;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
@@ -29,6 +30,7 @@ final readonly class PasswordLoginController
      * @param CsrfTokenManager $csrf CSRF token manager for login form submissions.
      * @param PasswordAuthenticator $authenticator Password verification service.
      * @param AuthSession $session Current authentication session facade.
+     * @param UserTotpCredentialRepository $totpCredentials TOTP credential lookup boundary.
      * @param LoginRateLimiter $rateLimiter Initial login throttling control.
      * @param SecurityEventLogger $securityEvents Audit logger for login events.
      * @param string $clientIp Server-observed client IP.
@@ -38,6 +40,7 @@ final readonly class PasswordLoginController
         private CsrfTokenManager $csrf,
         private PasswordAuthenticator $authenticator,
         private AuthSession $session,
+        private UserTotpCredentialRepository $totpCredentials,
         private LoginRateLimiter $rateLimiter,
         private SecurityEventLogger $securityEvents,
         private string $clientIp,
@@ -109,7 +112,20 @@ final readonly class PasswordLoginController
             $result->user?->email,
             $this->clientIp,
         );
-        $this->session->markFullyAuthenticated($result->user?->id, $result->user?->email);
+        $user = $result->user;
+
+        if ($user === null) {
+            throw new \LogicException('Successful password authentication must return a user.');
+        }
+
+        if ($this->totpCredentials->findActiveByUserId($user->id) !== null) {
+            $this->session->markMfaPending($user->id, $user->email);
+            ($this->rotateSessionId)();
+
+            return Response::redirect('/login/totp');
+        }
+
+        $this->session->markFullyAuthenticated($user->id, $user->email);
         ($this->rotateSessionId)();
 
         return Response::redirect('/account');
