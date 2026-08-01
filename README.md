@@ -32,13 +32,16 @@ Implemented foundation:
 - TOTP challenge rate limiting.
 - TOTP challenge security events.
 - Pending TOTP enrollment expiration.
+- Account security page for TOTP lifecycle status.
+- Normal TOTP disable with current authenticator code.
+- TOTP recovery-code generation, hash-only storage, one-time display, and service-level verification.
 
 Not implemented yet:
 
 - CSRF middleware.
 - Passkeys/WebAuthn.
 - Trusted devices.
-- Recovery flows.
+- Login recovery with recovery-code submission.
 - User-facing SQLite/libSQL persistence features.
 - CI/CD.
 
@@ -139,6 +142,12 @@ Protected account page:
 http://127.0.0.1:8080/account
 ```
 
+Account security page:
+
+```text
+http://127.0.0.1:8080/account/security
+```
+
 ## Frontend Commands
 
 Start the Vite development server:
@@ -187,6 +196,7 @@ Start with:
 - [TOTP concept note](docs/concepts/totp.md)
 - [v0.5.0 TOTP foundation implementation notes](docs/implementation-notes/v0.5-totp-foundation.md)
 - [v0.6.0 Password + TOTP flow implementation notes](docs/implementation-notes/v0.6-password-totp-flow.md)
+- [v0.7.0 TOTP lifecycle and recovery implementation notes](docs/implementation-notes/v0.7-totp-lifecycle-recovery.md)
 - [Decision records](docs/decisions/README.md)
 
 ## Versioning

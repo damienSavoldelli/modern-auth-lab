@@ -4,6 +4,48 @@ All notable changes to Modern Auth Lab will be documented in this file.
 
 The format follows Keep a Changelog conventions, and this project uses semantic versioning for project milestones.
 
+## [0.7.0] - 2026-08-01
+
+### Added
+
+- Added `/account/security` TOTP lifecycle overview.
+- Added normal TOTP disable flow requiring CSRF and current authenticator code.
+- Added TOTP disable security events.
+- Added recovery-code strategy ADR.
+- Added TOTP recovery-code persistence with hash-only storage.
+- Added recovery-code generation, hashing, one-time display, and replacement behavior.
+- Added service-level recovery-code verification and single-use consumption.
+- Added recovery-code generation security events.
+- Added pending TOTP enrollment cleanup policy documentation.
+- Added v0.7 implementation notes.
+
+### Changed
+
+- Updated account page with an account security link.
+- Updated TOTP concept documentation with lifecycle, recovery, and pending cleanup details.
+- Updated fallback strategy documentation to distinguish TOTP recovery from future Passkey fallback.
+- Updated roadmap to include `v0.6.1` and mark `v0.7.0` in progress.
+
+### Verified
+
+- `composer test`
+- `composer analyse`
+- `composer cs:check`
+- `npm run build`
+- `npm test`
+- `npm run lint`
+- `npm run format`
+
+### Not Included Yet
+
+- Recovery-code entry during login.
+- TOTP reset through recovery-code verification.
+- Recovery-code rate limiting at the login recovery boundary.
+- Confirmation that the user saved recovery codes.
+- Trusted devices.
+- Passkeys/WebAuthn.
+- Background cleanup job or CLI for expired pending enrollments.
+
 ## [0.6.1] - 2026-08-01
 
 ### Added
