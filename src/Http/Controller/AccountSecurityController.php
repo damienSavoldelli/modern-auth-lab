@@ -7,6 +7,7 @@ namespace ModernAuthLab\Http\Controller;
 use ModernAuthLab\Http\Response;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredential;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
+use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Session\AuthSession;
 
 /**
@@ -18,15 +19,19 @@ use ModernAuthLab\Session\AuthSession;
  */
 final readonly class AccountSecurityController
 {
+    private const TOTP_DISABLE_CSRF_TOKEN_ID = 'totp_disable_form';
+
     /**
      * Receive the current auth session and TOTP credential repository.
      *
      * @param AuthSession $session Current authentication session facade.
      * @param UserTotpCredentialRepository $totpCredentials Repository used to read TOTP lifecycle state.
+     * @param CsrfTokenManager $csrf CSRF token manager for future security-setting mutations.
      */
     public function __construct(
         private AuthSession $session,
         private UserTotpCredentialRepository $totpCredentials,
+        private CsrfTokenManager $csrf,
     ) {}
 
     /**
@@ -105,6 +110,11 @@ final readonly class AccountSecurityController
         $lastUsedTimeStep = $credential->lastUsedTimeStep === null
             ? 'Never used'
             : (string) $credential->lastUsedTimeStep;
+        $disableCsrfToken = htmlspecialchars(
+            $this->csrf->issue(self::TOTP_DISABLE_CSRF_TOKEN_ID)->value,
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            'UTF-8',
+        );
 
         return <<<HTML
             <p>TOTP is active for this account.</p>
@@ -120,6 +130,14 @@ final readonly class AccountSecurityController
                 <dt>Last accepted time step</dt>
                 <dd>{$lastUsedTimeStep}</dd>
             </dl>
+            <form method="post" action="/account/security/totp/disable">
+                <input type="hidden" name="csrf_token" value="{$disableCsrfToken}">
+                <label>
+                    Current authenticator code
+                    <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" required>
+                </label>
+                <button type="submit">Disable TOTP</button>
+            </form>
             HTML;
     }
 }

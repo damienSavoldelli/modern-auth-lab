@@ -88,6 +88,7 @@ $router->get('/account/security', static function (): Response {
     $controller = new AccountSecurityController(
         $authSession,
         new UserTotpCredentialRepository($pdo),
+        new CsrfTokenManager($_SESSION),
     );
 
     return $controller->show();

@@ -11,6 +11,7 @@ use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUsersTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUserTotpCredentialsTable;
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
+use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Session\AuthSession;
 use PDO;
 use PHPUnit\Framework\TestCase;
@@ -57,6 +58,7 @@ final class AccountSecurityControllerTest extends TestCase
         self::assertStringContainsString('Status: Disabled', $response->body);
         self::assertStringContainsString('TOTP is not active for this account.', $response->body);
         self::assertStringContainsString('<a href="/account/totp/setup">Set up TOTP</a>', $response->body);
+        self::assertStringNotContainsString('/account/security/totp/disable', $response->body);
     }
 
     public function testShowsActiveTotpStatusWithoutSecretMaterial(): void
@@ -89,6 +91,11 @@ final class AccountSecurityControllerTest extends TestCase
         self::assertStringContainsString('<dd>6</dd>', $response->body);
         self::assertStringContainsString('<dd>30 seconds</dd>', $response->body);
         self::assertStringContainsString('<dd>123456</dd>', $response->body);
+        self::assertStringContainsString('<form method="post" action="/account/security/totp/disable">', $response->body);
+        self::assertStringContainsString('name="csrf_token"', $response->body);
+        self::assertStringContainsString('Current authenticator code', $response->body);
+        self::assertStringContainsString('Disable TOTP', $response->body);
+        self::assertArrayHasKey('totp_disable_form', $storage['_csrf_tokens']);
         self::assertStringNotContainsString('encrypted-secret', $response->body);
         self::assertStringNotContainsString('secret-nonce', $response->body);
         self::assertStringNotContainsString('local-key', $response->body);
@@ -107,6 +114,7 @@ final class AccountSecurityControllerTest extends TestCase
         return new AccountSecurityController(
             new AuthSession($storage),
             $credentials,
+            new CsrfTokenManager($storage),
         );
     }
 
