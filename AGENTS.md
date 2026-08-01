@@ -105,6 +105,32 @@ For these milestones, the agent must:
 
 Documentation created for these milestones should support future technical articles. It should capture not only what was implemented, but also why the design was chosen, what was deferred, and which security tradeoffs remain.
 
+## Documentation Reading Map
+
+Before security-sensitive work, roadmap work, PR preparation, or release preparation, read only the documentation relevant to the task. Use this map to choose the smallest useful documentation set:
+
+- Project direction and milestone scope: `docs/roadmap.md`, `README.md`, `CHANGELOG.md`.
+- Architecture changes: `docs/architecture.md` and the related ADRs in `docs/decisions/`.
+- Authentication, session, and login changes: `docs/auth-flows.md`, `docs/security.md`, and ADRs `0005`, `0008`, `0009`, `0010`, `0011`, and `0012`.
+- TOTP changes: `docs/concepts/totp.md`, `docs/implementation-notes/v0.5-totp-foundation.md`, `docs/implementation-notes/v0.6-password-totp-flow.md`, and ADRs `0013`, `0014`, `0015`, `0016`, and `0017`.
+- Passkeys and WebAuthn changes: `docs/passkeys.md` and `docs/concepts/passkeys.md`.
+- MFA fallback, recovery, and trusted-device changes: `docs/fallback-strategy.md`, `docs/concepts/mfa-fallback.md`, and `docs/concepts/trusted-devices.md`.
+- Security references and external sources: `docs/concepts/sources.md`.
+- Pull Request and release work: `.github/pull_request_template.md`, `.github/release_notes_template.md`, and `.github/release.yml`.
+
+Do not reread all documentation by default. Prefer targeted reading, and mention any stale, contradictory, or missing documentation before changing behavior.
+
+## Documentation Update Rules
+
+- Update `README.md` for user-facing setup, commands, local configuration, and current usage.
+- Update `docs/roadmap.md` for milestone sequence and scope; keep it chronological, and only move the `in progress` marker when the active milestone changes.
+- Update `CHANGELOG.md` only when preparing release content or recording validated milestone changes.
+- Update `docs/concepts/` for long-lived explanations that apply across multiple versions.
+- Update `docs/implementation-notes/` for step-by-step milestone implementation notes, code maps, security reasoning, and reproducible workflow details.
+- Add an ADR in `docs/decisions/` for decisions that affect future architecture, security posture, dependencies, runtime behavior, or workflow.
+- Avoid duplicating the same explanation in multiple documents; prefer a single source of truth with cross-references when needed.
+- Keep documentation synchronized with real code, routes, commands, environment variables, and release scope.
+
 ## Delivery Workflow
 
 Default delivery flow for roadmap work:
