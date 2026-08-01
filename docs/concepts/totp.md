@@ -321,6 +321,35 @@ attacker has the TOTP secret    -> can generate future codes
 
 The project uses libsodium `secretbox` for this protection layer.
 
+### Why Encryption, Not Hashing?
+
+Passwords and TOTP secrets are stored differently because the server uses them differently.
+
+For a password:
+
+```text
+user submits password
+server hashes submitted password
+server compares hash with stored hash
+original password is not needed
+```
+
+That is why password storage uses one-way hashing.
+
+For TOTP:
+
+```text
+user submits six-digit code
+server decrypts stored TOTP secret
+server recomputes expected code from secret + time
+server compares submitted code with expected code
+original TOTP secret is required
+```
+
+That is why TOTP secret storage needs reversible encryption, not password hashing.
+
+Hashing the TOTP secret would break verification because the server would no longer be able to recover the original secret needed to compute expected codes.
+
 `secretbox` is authenticated encryption. It provides:
 
 - confidentiality, so the stored payload does not reveal the secret;
@@ -336,6 +365,83 @@ The stored fields are:
 The `secret_key_id` is not a secret. It tells the application which encryption key should be used to decrypt the payload. This prepares future key rotation without changing the credential table.
 
 The encryption key itself must not be stored in SQLite. Future HTTP enrollment wiring will load it from trusted configuration, such as an environment variable or secret manager.
+
+## Server Encryption Key Configuration
+
+The server encryption key is not the user's TOTP secret.
+
+It is a separate application secret used to protect user TOTP secrets before they are stored.
+
+The server needs this key because TOTP verification requires recovering the original user TOTP secret.
+
+Without a server encryption key, the project would have only two bad options:
+
+- store the user TOTP secret in plain text, which is unsafe if SQLite leaks;
+- hash the user TOTP secret, which would make verification impossible because hashes are not reversible.
+
+The encryption key solves this:
+
+```text
+store time:
+user TOTP secret + server encryption key -> encrypted payload in SQLite
+
+verify time:
+encrypted payload from SQLite + server encryption key -> original user TOTP secret
+```
+
+So the key acts like an application-level storage protection key. It is required to lock and unlock stored TOTP secrets.
+
+Mental model:
+
+```text
+user TOTP secret        = the thing Google Authenticator also knows
+server encryption key   = the application's key used to encrypt that secret in storage
+SQLite                  = stores encrypted user TOTP secrets, not the server key
+```
+
+If an attacker steals only the SQLite file, they should not immediately get usable TOTP secrets. If the same attacker also steals the server encryption key, then they can decrypt those secrets. This is why the key must live outside the database and outside Git.
+
+For local development, the project expects:
+
+```text
+TOTP_SECRET_ENCRYPTION_KEY=Base64Encoded32ByteKey
+```
+
+The recommended local file is:
+
+```text
+.env.local
+```
+
+This file is ignored by Git. The repository includes `.env.example` as the safe template that can be committed.
+
+The raw key must be exactly 32 bytes because libsodium `secretbox` requires a 32-byte symmetric key. The environment variable uses Base64 only as a transport format, so the binary key can be safely copied into a shell or local environment file.
+
+Generate a local development key with:
+
+```sh
+php -r 'echo base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)), PHP_EOL;'
+```
+
+Create or replace `.env.local` directly with:
+
+```sh
+php -r 'echo "TOTP_SECRET_ENCRYPTION_KEY=", base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)), PHP_EOL;' > .env.local
+chmod 600 .env.local
+```
+
+This command is useful for a local demo, but it replaces the existing local key. If existing TOTP credentials were encrypted with the previous key, they will no longer be decryptable.
+
+Important rules:
+
+- commit `.env.example`, never `.env.local`;
+- do not commit this value;
+- do not store it in SQLite;
+- do not log it;
+- rotate it only through a planned migration strategy;
+- losing it means encrypted TOTP secrets cannot be decrypted.
+
+The project also stores a `secret_key_id` next to each encrypted secret. The key id is not secret. It exists to support future key rotation by saying which server key encrypted a given credential.
 
 The current implementation keeps encryption separate from the repository:
 

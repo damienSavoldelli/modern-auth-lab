@@ -23,9 +23,12 @@ use ModernAuthLab\Security\Password\PasswordHasher;
 use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
 use ModernAuthLab\Session\NativeSession;
 use ModernAuthLab\Session\SessionCookieOptions;
+use ModernAuthLab\Support\EnvLoader;
 use PDO;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
+
+EnvLoader::loadIfExists(dirname(__DIR__) . '/.env.local');
 
 $router = new Router();
 
