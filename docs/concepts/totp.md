@@ -151,6 +151,39 @@ This project generates codes as strings, not integers, because leading zeroes ar
 000123
 ```
 
+## Per-Enrollment Parameters
+
+The TOTP parameters used during enrollment must be treated as part of that enrollment.
+
+When the user scans the QR code, the authenticator app stores:
+
+- the shared secret;
+- the algorithm;
+- the number of digits;
+- the period.
+
+The app does not automatically learn future server-side policy changes.
+
+This means the server must later verify codes with the same parameters that were active when the user enrolled. If a user enrolled with:
+
+```text
+Algorithm = SHA1
+Digits    = 6
+Period    = 30
+```
+
+the server must continue verifying that user's TOTP codes with `SHA1`, `6`, and `30` until the user completes a controlled migration or replacement flow.
+
+Changing a global TOTP policy abruptly can lock users out:
+
+```text
+app still generates SHA1 / 6 / 30
+server suddenly expects SHA512 / 8 / 60
+result: codes no longer match
+```
+
+Future persistence must therefore store TOTP parameters with the enrollment record, not rely only on a global configuration.
+
 ## Multi-Device Behavior
 
 TOTP is not device-specific.
