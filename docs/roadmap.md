@@ -205,19 +205,27 @@ Intentionally deferred:
 
 These items are deferred because they require a global MFA policy that should account for TOTP, Passkeys, recovery codes, and trusted devices together.
 
-### `v0.8.0 - Passkey / WebAuthn Foundation`
+### `v0.8.0 - Passkey / WebAuthn Foundation` - In progress
 
-Goal: add WebAuthn registration and authentication primitives without replacing TOTP.
+Goal: add WebAuthn enrollment and authentication primitives without replacing TOTP or introducing public signup.
 
 Planned scope:
 
-- Registration challenge generation.
+- Passkey enrollment for existing fully authenticated users.
+- Enrollment challenge generation.
 - Authentication challenge generation.
 - Credential storage model.
 - Origin, RP ID, challenge, user presence, and user verification validation.
 - Signature counter handling when available.
 - Backend tests and focused frontend WebAuthn modules.
 - Documentation for browser/device Passkey capability constraints.
+
+Out of scope for `v0.8.0`:
+
+- Public signup.
+- Passwordless account creation.
+- Complete Password + Passkey login.
+- Replacing TOTP.
 
 ### `v0.9.0 - Password + Passkey Flow`
 

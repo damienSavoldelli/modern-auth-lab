@@ -197,6 +197,7 @@ Start with:
 - [v0.5.0 TOTP foundation implementation notes](docs/implementation-notes/v0.5-totp-foundation.md)
 - [v0.6.0 Password + TOTP flow implementation notes](docs/implementation-notes/v0.6-password-totp-flow.md)
 - [v0.7.0 TOTP lifecycle and recovery implementation notes](docs/implementation-notes/v0.7-totp-lifecycle-recovery.md)
+- [v0.8.0 Passkey / WebAuthn foundation implementation notes](docs/implementation-notes/v0.8-passkey-webauthn-foundation.md)
 - [Decision records](docs/decisions/README.md)
 
 ## Versioning
