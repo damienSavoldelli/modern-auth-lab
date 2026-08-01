@@ -12,6 +12,7 @@ use ModernAuthLab\Http\Controller\TotpSetupController;
 use ModernAuthLab\Http\Router;
 use ModernAuthLab\Application\Auth\PasswordAuthenticator;
 use ModernAuthLab\Application\Security\SecurityEventLogger;
+use ModernAuthLab\Application\Totp\TotpDisableService;
 use ModernAuthLab\Application\Totp\TotpEnrollmentService;
 use ModernAuthLab\Application\Totp\TotpLoginVerificationService;
 use ModernAuthLab\Infrastructure\Persistence\DatabaseConfig;
@@ -92,6 +93,42 @@ $router->get('/account/security', static function (): Response {
     );
 
     return $controller->show();
+});
+
+$router->post('/account/security/totp/disable', static function (): Response {
+    try {
+        $controller = createAccountSecurityController();
+        $totpConfig = TotpSecretEncryptionConfig::fromEnvironment(getenvArray());
+    } catch (\InvalidArgumentException) {
+        return Response::html(<<<'HTML'
+            <!doctype html>
+            <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Account Security - Modern Auth Lab</title>
+                </head>
+                <body>
+                    <main>
+                        <h1>Account Security</h1>
+                        <p>TOTP lifecycle actions are not configured.</p>
+                    </main>
+                </body>
+            </html>
+            HTML, 500);
+    }
+
+    $pdo = createApplicationConnection();
+
+    return $controller->disableTotp(
+        $_POST,
+        new TotpDisableService(
+            new UserTotpCredentialRepository($pdo),
+            $totpConfig->protector(),
+        ),
+        new SecurityEventLogger(new SecurityEventRepository($pdo)),
+        clientIp(),
+    );
 });
 
 $router->get('/account/totp/setup', static function (): Response {
@@ -192,13 +229,7 @@ function createTotpSetupController(): TotpSetupController
 {
     [, $authSession] = createSessionContext();
     $pdo = createApplicationConnection();
-    $environment = getenv();
-
-    if (! is_array($environment)) {
-        $environment = [];
-    }
-
-    $totpConfig = TotpSecretEncryptionConfig::fromEnvironment($environment);
+    $totpConfig = TotpSecretEncryptionConfig::fromEnvironment(getenvArray());
 
     return new TotpSetupController(
         $authSession,
@@ -215,12 +246,7 @@ function createTotpChallengeController(): TotpChallengeController
 {
     [$nativeSession, $authSession] = createSessionContext();
     $pdo = createApplicationConnection();
-    $environment = getenv();
-
-    if (! is_array($environment)) {
-        $environment = [];
-    }
-
+    $environment = getenvArray();
     $totpConfig = TotpSecretEncryptionConfig::fromEnvironment($environment);
     $rateLimitConfig = TotpRateLimitConfig::fromEnvironment($environment);
 
@@ -236,6 +262,28 @@ function createTotpChallengeController(): TotpChallengeController
         clientIp(),
         static fn() => $nativeSession->rotateId(),
     );
+}
+
+function createAccountSecurityController(): AccountSecurityController
+{
+    [, $authSession] = createSessionContext();
+    $pdo = createApplicationConnection();
+
+    return new AccountSecurityController(
+        $authSession,
+        new UserTotpCredentialRepository($pdo),
+        new CsrfTokenManager($_SESSION),
+    );
+}
+
+/**
+ * @return array<string, string>
+ */
+function getenvArray(): array
+{
+    $environment = getenv();
+
+    return is_array($environment) ? $environment : [];
 }
 
 function createApplicationConnection(): \PDO

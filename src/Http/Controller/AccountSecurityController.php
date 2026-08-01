@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace ModernAuthLab\Http\Controller;
 
+use ModernAuthLab\Application\Security\SecurityEventLogger;
+use ModernAuthLab\Application\Totp\TotpDisableService;
+use ModernAuthLab\Domain\Security\SecurityEventType;
 use ModernAuthLab\Http\Response;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredential;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
+use ModernAuthLab\Security\Csrf\CsrfTokenException;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Session\AuthSession;
 
@@ -41,34 +45,119 @@ final readonly class AccountSecurityController
      */
     public function show(): Response
     {
-        if (! $this->session->state()->isFullyAuthenticated()) {
-            return Response::redirect('/login');
+        $redirect = $this->redirectWhenSessionCannotManageSecurity();
+        if ($redirect !== null) {
+            return $redirect;
         }
 
         $userId = $this->session->userId();
-
-        if ($userId === null) {
-            return Response::redirect('/login');
-        }
-
+        \assert($userId !== null);
         $activeTotpCredential = $this->totpCredentials->findActiveByUserId($userId);
 
         return Response::html($this->renderPage($activeTotpCredential));
     }
 
     /**
+     * Process a normal TOTP disable request.
+     *
+     * @param array<string, mixed> $post Submitted form data.
+     * @param TotpDisableService $disableService TOTP disable application workflow.
+     * @param SecurityEventLogger $securityEvents Audit logger for lifecycle events.
+     * @param string $clientIp Server-observed client IP.
+     *
+     * @return Response Redirect after success or generic failure response.
+     */
+    public function disableTotp(
+        array $post,
+        TotpDisableService $disableService,
+        SecurityEventLogger $securityEvents,
+        string $clientIp,
+    ): Response {
+        $redirect = $this->redirectWhenSessionCannotManageSecurity();
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
+        $userId = $this->session->userId();
+        $email = $this->session->userEmail();
+
+        if ($userId === null || $email === null) {
+            return Response::redirect('/login');
+        }
+
+        try {
+            $this->csrf->consume(self::TOTP_DISABLE_CSRF_TOKEN_ID, $this->stringValue($post['csrf_token'] ?? null));
+        } catch (CsrfTokenException) {
+            $securityEvents->record(
+                SecurityEventType::TotpDisableFailed,
+                $userId,
+                $email,
+                $clientIp,
+            );
+
+            return $this->failedDisableResponse();
+        }
+
+        $disabled = $disableService->disable($userId, $this->stringValue($post['code'] ?? null));
+
+        if (! $disabled) {
+            $securityEvents->record(
+                SecurityEventType::TotpDisableFailed,
+                $userId,
+                $email,
+                $clientIp,
+            );
+
+            return $this->failedDisableResponse();
+        }
+
+        $securityEvents->record(
+            SecurityEventType::TotpDisableSucceeded,
+            $userId,
+            $email,
+            $clientIp,
+        );
+
+        return Response::redirect('/account/security');
+    }
+
+    private function redirectWhenSessionCannotManageSecurity(): ?Response
+    {
+        if (! $this->session->state()->isFullyAuthenticated() || $this->session->userId() === null) {
+            return Response::redirect('/login');
+        }
+
+        return null;
+    }
+
+    private function failedDisableResponse(): Response
+    {
+        $userId = $this->session->userId();
+        $activeTotpCredential = $userId === null ? null : $this->totpCredentials->findActiveByUserId($userId);
+
+        return Response::html(
+            $this->renderPage($activeTotpCredential, 'Unable to disable TOTP with the submitted authenticator code.'),
+            400,
+        );
+    }
+
+    /**
      * Render the read-only account security page.
      *
      * @param UserTotpCredential|null $activeTotpCredential Active TOTP credential when one exists.
+     * @param string|null $error User-facing generic lifecycle error.
      *
      * @return string HTML response body.
      */
-    private function renderPage(?UserTotpCredential $activeTotpCredential): string
+    private function renderPage(?UserTotpCredential $activeTotpCredential, ?string $error = null): string
     {
         $totpStatus = $activeTotpCredential === null ? 'Disabled' : 'Enabled';
         $totpDetails = $activeTotpCredential === null
             ? '<p>TOTP is not active for this account.</p><p><a href="/account/totp/setup">Set up TOTP</a></p>'
             : $this->renderActiveTotpDetails($activeTotpCredential);
+        $errorHtml = $error === null
+            ? ''
+            : '<p role="alert">' . htmlspecialchars($error, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>';
 
         return <<<HTML
             <!doctype html>
@@ -81,6 +170,7 @@ final readonly class AccountSecurityController
                 <body>
                     <main>
                         <h1>Account Security</h1>
+                        {$errorHtml}
                         <section aria-labelledby="totp-status">
                             <h2 id="totp-status">TOTP</h2>
                             <p>Status: {$totpStatus}</p>
@@ -139,5 +229,10 @@ final readonly class AccountSecurityController
                 <button type="submit">Disable TOTP</button>
             </form>
             HTML;
+    }
+
+    private function stringValue(mixed $value): string
+    {
+        return is_string($value) ? $value : '';
     }
 }
