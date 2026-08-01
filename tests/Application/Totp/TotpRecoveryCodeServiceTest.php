@@ -60,6 +60,70 @@ final class TotpRecoveryCodeServiceTest extends TestCase
         self::assertSame($second->records[0]->id, $activeCodes[0]->id);
     }
 
+    public function testVerifiesAndConsumesActiveRecoveryCode(): void
+    {
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $repository = new UserTotpRecoveryCodeRepository($pdo);
+        $service = new TotpRecoveryCodeService(
+            $repository,
+            new TotpRecoveryCodeGenerator(),
+            new TotpRecoveryCodeHasher(),
+        );
+        $generated = $service->generateForUser($user->id, 2);
+
+        $result = $service->verifyAndConsume($user->id, $generated->plainCodes[0]);
+        $secondAttempt = $service->verifyAndConsume($user->id, $generated->plainCodes[0]);
+        $activeCodes = $repository->findActiveByUserId($user->id);
+
+        self::assertTrue($result->success);
+        self::assertSame($generated->records[0]->id, $result->recoveryCodeId);
+        self::assertFalse($secondAttempt->success);
+        self::assertNull($secondAttempt->recoveryCodeId);
+        self::assertCount(1, $activeCodes);
+        self::assertSame($generated->records[1]->id, $activeCodes[0]->id);
+    }
+
+    public function testRejectsInvalidRecoveryCodeWithoutConsumingActiveCodes(): void
+    {
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $repository = new UserTotpRecoveryCodeRepository($pdo);
+        $service = new TotpRecoveryCodeService(
+            $repository,
+            new TotpRecoveryCodeGenerator(),
+            new TotpRecoveryCodeHasher(),
+        );
+        $service->generateForUser($user->id, 2);
+
+        $result = $service->verifyAndConsume($user->id, 'INVALID-CODE');
+
+        self::assertFalse($result->success);
+        self::assertNull($result->recoveryCodeId);
+        self::assertCount(2, $repository->findActiveByUserId($user->id));
+    }
+
+    public function testRejectsRecoveryCodeOwnedByAnotherUser(): void
+    {
+        $pdo = $this->createMigratedConnection();
+        $users = new UserRepository($pdo);
+        $user = $users->create('user@example.com', 'password-hash');
+        $otherUser = $users->create('other@example.com', 'password-hash');
+        $repository = new UserTotpRecoveryCodeRepository($pdo);
+        $service = new TotpRecoveryCodeService(
+            $repository,
+            new TotpRecoveryCodeGenerator(),
+            new TotpRecoveryCodeHasher(),
+        );
+        $generated = $service->generateForUser($user->id, 1);
+
+        $result = $service->verifyAndConsume($otherUser->id, $generated->plainCodes[0]);
+
+        self::assertFalse($result->success);
+        self::assertNull($result->recoveryCodeId);
+        self::assertCount(1, $repository->findActiveByUserId($user->id));
+    }
+
     private function createMigratedConnection(): PDO
     {
         $pdo = new PDO('sqlite::memory:');

@@ -48,4 +48,27 @@ final readonly class TotpRecoveryCodeService
 
         return new TotpRecoveryCodeGenerationResult($plainCodes, $records);
     }
+
+    /**
+     * Verify and consume one active recovery code for a user.
+     *
+     * @param int $userId Owner user identifier.
+     * @param string $submittedCode Submitted recovery code.
+     *
+     * @return TotpRecoveryCodeVerificationResult Generic success/failure result.
+     */
+    public function verifyAndConsume(int $userId, string $submittedCode): TotpRecoveryCodeVerificationResult
+    {
+        foreach ($this->recoveryCodes->findActiveByUserId($userId) as $recoveryCode) {
+            if (! $this->hasher->verify($submittedCode, $recoveryCode->codeHash)) {
+                continue;
+            }
+
+            $this->recoveryCodes->markUsed($recoveryCode->id);
+
+            return TotpRecoveryCodeVerificationResult::success($recoveryCode->id);
+        }
+
+        return TotpRecoveryCodeVerificationResult::failure();
+    }
 }
