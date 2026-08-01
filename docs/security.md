@@ -14,6 +14,9 @@ The project treats authentication as a sequence of explicit security states, not
 
 - Partial authentication is not full authentication.
 - Password verification, MFA challenge creation, MFA verification, fallback eligibility, and full authentication are separate states.
+- MFA methods must be modeled as a set of account capabilities, not as a single global switch.
+- Passkeys should be preferred when available and allowed, but TOTP must remain available as a compatible method and controlled fallback unless policy explicitly says otherwise.
+- User choice must be limited by server-side policy, active credential state, risk context, and browser/device capability.
 - Session state must remain server-side and must distinguish partial authentication from full authentication.
 - Fallback TOTP is a controlled path, not a public bypass.
 - Server-side validation is required for all security-sensitive behavior.

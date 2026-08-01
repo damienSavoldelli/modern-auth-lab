@@ -113,7 +113,7 @@ Before security-sensitive work, roadmap work, PR preparation, or release prepara
 - Architecture changes: `docs/architecture.md` and the related ADRs in `docs/decisions/`.
 - Authentication, session, and login changes: `docs/auth-flows.md`, `docs/security.md`, and ADRs `0005`, `0008`, `0009`, `0010`, `0011`, and `0012`.
 - TOTP changes: `docs/concepts/totp.md`, `docs/implementation-notes/v0.5-totp-foundation.md`, `docs/implementation-notes/v0.6-password-totp-flow.md`, and ADRs `0013`, `0014`, `0015`, `0016`, and `0017`.
-- Passkeys and WebAuthn changes: `docs/passkeys.md` and `docs/concepts/passkeys.md`.
+- Passkeys and WebAuthn changes: `docs/concepts/passkeys.md`, `docs/auth-flows.md`, `docs/security.md`, and future `docs/implementation-notes/` or ADRs for the active milestone.
 - MFA fallback, recovery, and trusted-device changes: `docs/fallback-strategy.md`, `docs/concepts/mfa-fallback.md`, and `docs/concepts/trusted-devices.md`.
 - Security references and external sources: `docs/concepts/sources.md`.
 - Pull Request and release work: `.github/pull_request_template.md`, `.github/release_notes_template.md`, and `.github/release.yml`.
