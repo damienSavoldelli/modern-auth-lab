@@ -55,6 +55,68 @@ final class TotpEnrollmentServiceTest extends TestCase
         self::assertSame($first->provisioningUri, $second->provisioningUri);
     }
 
+    public function testRevokesExpiredPendingEnrollmentAndCreatesReplacement(): void
+    {
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $credentials = new UserTotpCredentialRepository($pdo);
+        $now = strtotime('2026-08-01 12:00:00 UTC');
+        self::assertIsInt($now);
+        $service = new TotpEnrollmentService(
+            $credentials,
+            new TotpSecretProtector(str_repeat('a', 32), 'local'),
+            pendingLifetimeSeconds: 1800,
+            now: static fn(): int => $now,
+        );
+        $first = $service->start($user->id, $user->email);
+        $this->moveCredentialCreatedAt($pdo, $first->credential->id, '2026-08-01 11:00:00');
+
+        $second = $service->start($user->id, $user->email);
+
+        self::assertTrue($second->created);
+        self::assertNotSame($first->credential->id, $second->credential->id);
+        self::assertSame('revoked', $this->credentialStatus($pdo, $first->credential->id));
+        self::assertNotNull($this->credentialRevokedAt($pdo, $first->credential->id));
+        self::assertSame($second->credential->id, $credentials->findPendingByUserId($user->id)?->id);
+    }
+
+    public function testRejectsConfirmationForExpiredPendingEnrollment(): void
+    {
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $credentials = new UserTotpCredentialRepository($pdo);
+        $now = strtotime('2026-08-01 12:00:00 UTC');
+        self::assertIsInt($now);
+        $service = new TotpEnrollmentService(
+            $credentials,
+            new TotpSecretProtector(str_repeat('a', 32), 'local'),
+            pendingLifetimeSeconds: 1800,
+            now: static fn(): int => $now,
+        );
+        $pending = $service->start($user->id, $user->email);
+        $code = $this->codeFromProvisioningSecret($pending->secretBase32, $now);
+        $this->moveCredentialCreatedAt($pdo, $pending->credential->id, '2026-08-01 11:00:00');
+
+        $confirmed = $service->confirm($user->id, $code, $now);
+
+        self::assertFalse($confirmed);
+        self::assertSame('revoked', $this->credentialStatus($pdo, $pending->credential->id));
+        self::assertNull($credentials->findPendingByUserId($user->id));
+        self::assertNull($credentials->findActiveByUserId($user->id));
+    }
+
+    public function testRejectsInvalidPendingEnrollmentLifetime(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('TOTP pending enrollment lifetime must be greater than zero.');
+
+        new TotpEnrollmentService(
+            new UserTotpCredentialRepository($this->createMigratedConnection()),
+            new TotpSecretProtector(str_repeat('a', 32), 'local'),
+            pendingLifetimeSeconds: 0,
+        );
+    }
+
     public function testRejectsStartWhenTotpIsAlreadyActive(): void
     {
         $pdo = $this->createMigratedConnection();
@@ -120,6 +182,37 @@ final class TotpEnrollmentServiceTest extends TestCase
         $secret = TotpSecret::fromBase32($base32Secret);
 
         return (new TotpGenerator())->generate($secret, $timestamp);
+    }
+
+    private function moveCredentialCreatedAt(PDO $pdo, int $credentialId, string $createdAt): void
+    {
+        $statement = $pdo->prepare(
+            'UPDATE user_totp_credentials
+                SET created_at = :created_at,
+                    updated_at = :created_at
+                WHERE id = :id',
+        );
+        $statement->execute([
+            'id' => $credentialId,
+            'created_at' => $createdAt,
+        ]);
+    }
+
+    private function credentialStatus(PDO $pdo, int $credentialId): string
+    {
+        $statement = $pdo->prepare('SELECT status FROM user_totp_credentials WHERE id = :id');
+        $statement->execute(['id' => $credentialId]);
+
+        return (string) $statement->fetchColumn();
+    }
+
+    private function credentialRevokedAt(PDO $pdo, int $credentialId): ?string
+    {
+        $statement = $pdo->prepare('SELECT revoked_at FROM user_totp_credentials WHERE id = :id');
+        $statement->execute(['id' => $credentialId]);
+        $value = $statement->fetchColumn();
+
+        return is_string($value) ? $value : null;
     }
 
     private function createMigratedConnection(): PDO
