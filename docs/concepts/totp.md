@@ -348,6 +348,17 @@ The first planned self-service recovery mechanism is recovery codes:
 
 Recovery codes must be created before the user loses the authenticator. If a user has no usable recovery method, the system should fail closed until a stronger recovery policy exists.
 
+Recovery codes use password-style hashing because the server does not need to recover the original code. It only needs to verify a submitted code.
+
+This is different from TOTP secret storage:
+
+```text
+TOTP secret   -> encrypted because the server must decrypt it to generate expected codes
+Recovery code -> hashed because the server only verifies a submitted backup credential
+```
+
+The plain recovery code exists only at generation/display time. After that, only the hash remains in storage.
+
 ## Secret Protection Before Storage
 
 The TOTP secret must be protected before it is written to SQLite.
