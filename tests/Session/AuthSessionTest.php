@@ -44,15 +44,33 @@ final class AuthSessionTest extends TestCase
         $storage = [];
         $session = new AuthSession($storage);
 
-        $session->markFullyAuthenticated();
+        $session->markFullyAuthenticated(123, 'user@example.com');
 
         self::assertSame(AuthSessionState::FullyAuthenticated, $session->state());
         self::assertTrue($session->state()->isFullyAuthenticated());
+        self::assertSame(123, $session->userId());
+        self::assertSame('user@example.com', $session->userEmail());
+    }
+
+    public function testIgnoresInvalidStoredUserIdentity(): void
+    {
+        $storage = [
+            'auth_user_id' => '123',
+            'auth_user_email' => '',
+        ];
+        $session = new AuthSession($storage);
+
+        self::assertNull($session->userId());
+        self::assertNull($session->userEmail());
     }
 
     public function testClearsAuthenticationState(): void
     {
-        $storage = ['auth_state' => 'fully_authenticated'];
+        $storage = [
+            'auth_state' => 'fully_authenticated',
+            'auth_user_id' => 123,
+            'auth_user_email' => 'user@example.com',
+        ];
         $session = new AuthSession($storage);
 
         $session->clearAuthentication();

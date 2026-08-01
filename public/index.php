@@ -6,9 +6,11 @@ use ModernAuthLab\Http\Response;
 use ModernAuthLab\Http\Controller\AccountController;
 use ModernAuthLab\Http\Controller\LogoutController;
 use ModernAuthLab\Http\Controller\PasswordLoginController;
+use ModernAuthLab\Http\Controller\TotpSetupController;
 use ModernAuthLab\Http\Router;
 use ModernAuthLab\Application\Auth\PasswordAuthenticator;
 use ModernAuthLab\Application\Security\SecurityEventLogger;
+use ModernAuthLab\Application\Totp\TotpEnrollmentService;
 use ModernAuthLab\Infrastructure\Persistence\DatabaseConfig;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRunner;
@@ -18,14 +20,19 @@ use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUsersTable;
 use ModernAuthLab\Infrastructure\Persistence\SecurityEventRepository;
 use ModernAuthLab\Infrastructure\Persistence\SqliteConnectionFactory;
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
+use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\Password\PasswordHasher;
 use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
+use ModernAuthLab\Security\Totp\TotpQrCodeRenderer;
+use ModernAuthLab\Security\Totp\TotpSecretEncryptionConfig;
 use ModernAuthLab\Session\NativeSession;
 use ModernAuthLab\Session\SessionCookieOptions;
-use PDO;
+use ModernAuthLab\Support\EnvLoader;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
+
+EnvLoader::loadIfExists(dirname(__DIR__) . '/.env.local');
 
 $router = new Router();
 
@@ -55,6 +62,56 @@ $router->get('/account', static function (): Response {
     );
 
     return $controller->show();
+});
+
+$router->get('/account/totp/setup', static function (): Response {
+    try {
+        $controller = createTotpSetupController();
+    } catch (\InvalidArgumentException) {
+        return Response::html(<<<'HTML'
+            <!doctype html>
+            <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>TOTP Setup - Modern Auth Lab</title>
+                </head>
+                <body>
+                    <main>
+                        <h1>TOTP Setup</h1>
+                        <p>TOTP enrollment is not configured.</p>
+                    </main>
+                </body>
+            </html>
+            HTML, 500);
+    }
+
+    return $controller->show();
+});
+
+$router->post('/account/totp/setup', static function (): Response {
+    try {
+        $controller = createTotpSetupController();
+    } catch (\InvalidArgumentException) {
+        return Response::html(<<<'HTML'
+            <!doctype html>
+            <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>TOTP Setup - Modern Auth Lab</title>
+                </head>
+                <body>
+                    <main>
+                        <h1>TOTP Setup</h1>
+                        <p>TOTP enrollment is not configured.</p>
+                    </main>
+                </body>
+            </html>
+            HTML, 500);
+    }
+
+    return $controller->confirm($_POST);
 });
 
 $router->post('/logout', static function (): Response {
@@ -100,7 +157,30 @@ function createPasswordLoginController(): PasswordLoginController
     );
 }
 
-function createApplicationConnection(): PDO
+function createTotpSetupController(): TotpSetupController
+{
+    [, $authSession] = createSessionContext();
+    $pdo = createApplicationConnection();
+    $environment = getenv();
+
+    if (! is_array($environment)) {
+        $environment = [];
+    }
+
+    $totpConfig = TotpSecretEncryptionConfig::fromEnvironment($environment);
+
+    return new TotpSetupController(
+        $authSession,
+        new CsrfTokenManager($_SESSION),
+        new TotpEnrollmentService(
+            new UserTotpCredentialRepository($pdo),
+            $totpConfig->protector(),
+        ),
+        new TotpQrCodeRenderer(),
+    );
+}
+
+function createApplicationConnection(): \PDO
 {
     $pdo = (new SqliteConnectionFactory(DatabaseConfig::default(dirname(__DIR__))))->connect();
     $migrationRepository = new MigrationRepository($pdo);
