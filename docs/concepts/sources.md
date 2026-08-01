@@ -18,6 +18,9 @@ Prefer primary standards and established security references before blog posts o
 - Yubico OATH URI String Format  
   https://docs.yubico.com/yesdk/users-manual/application-oath/uri-string-format.html
 
+- Libsodium secret-key authenticated encryption  
+  https://doc.libsodium.org/secret-key_cryptography/secretbox
+
 ## WebAuthn And Passkeys
 
 - W3C WebAuthn Level 3 specification  

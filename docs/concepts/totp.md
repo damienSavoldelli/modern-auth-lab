@@ -308,6 +308,50 @@ Why `last_used_time_step` matters:
 
 The schema currently allows only one `pending` or `active` TOTP credential per user. This matches the practical limitation of TOTP: if the same QR code is copied to multiple phones, the server cannot distinguish those phones anyway. Passkeys will later handle true per-device lifecycle and per-device revocation.
 
+## Secret Protection Before Storage
+
+The TOTP secret must be protected before it is written to SQLite.
+
+This matters because the TOTP secret is reusable MFA material:
+
+```text
+attacker has one six-digit code -> short-lived risk
+attacker has the TOTP secret    -> can generate future codes
+```
+
+The project uses libsodium `secretbox` for this protection layer.
+
+`secretbox` is authenticated encryption. It provides:
+
+- confidentiality, so the stored payload does not reveal the secret;
+- integrity, so modified ciphertext cannot be decrypted silently;
+- nonce-based encryption, so encrypting the same secret twice produces different stored payloads.
+
+The stored fields are:
+
+- `secret_ciphertext`, the Base64-encoded encrypted secret;
+- `secret_nonce`, the Base64-encoded nonce used for encryption;
+- `secret_key_id`, the identifier of the key used to encrypt the secret.
+
+The `secret_key_id` is not a secret. It tells the application which encryption key should be used to decrypt the payload. This prepares future key rotation without changing the credential table.
+
+The encryption key itself must not be stored in SQLite. Future HTTP enrollment wiring will load it from trusted configuration, such as an environment variable or secret manager.
+
+The current implementation keeps encryption separate from the repository:
+
+```text
+TotpSecret
+    -> TotpSecretProtector
+    -> ProtectedTotpSecret
+    -> UserTotpCredentialRepository
+```
+
+This separation keeps responsibilities clear:
+
+- TOTP primitives generate and validate secrets;
+- the protector encrypts and decrypts secrets;
+- the repository stores already-protected secret material.
+
 ## Multi-Device Behavior
 
 TOTP is not device-specific.
