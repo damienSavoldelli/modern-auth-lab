@@ -4,6 +4,25 @@ All notable changes to Modern Auth Lab will be documented in this file.
 
 The format follows Keep a Changelog conventions, and this project uses semantic versioning for project milestones.
 
+## [0.6.1] - 2026-08-01
+
+### Added
+
+- Added historical implementation notes for `v0.1.0` through `v0.4.0`.
+- Added reconstructed milestone context based on tags, Pull Requests, changelog entries, ADRs, and tagged file trees.
+- Added step-by-step explanations for the project foundation, session/CSRF/SQLite foundation, user/password foundation, and full session login milestones.
+
+### Verified
+
+- `npm run format`
+- `git diff --check`
+
+### Not Included
+
+- Runtime code changes.
+- Authentication behavior changes.
+- New roadmap scope.
+
 ## [0.6.0] - 2026-08-01
 
 ### Added
