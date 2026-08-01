@@ -6,6 +6,7 @@ use ModernAuthLab\Http\Response;
 use ModernAuthLab\Http\Controller\AccountController;
 use ModernAuthLab\Http\Controller\LogoutController;
 use ModernAuthLab\Http\Controller\PasswordLoginController;
+use ModernAuthLab\Http\Controller\TotpChallengeController;
 use ModernAuthLab\Http\Controller\TotpSetupController;
 use ModernAuthLab\Http\Router;
 use ModernAuthLab\Application\Auth\PasswordAuthenticator;
@@ -51,6 +52,16 @@ $router->post('/login', static function (): Response {
     $controller = createPasswordLoginController();
 
     return $controller->submit($_POST);
+});
+
+$router->get('/login/totp', static function (): Response {
+    [, $authSession] = createSessionContext();
+    $controller = new TotpChallengeController(
+        $authSession,
+        new CsrfTokenManager($_SESSION),
+    );
+
+    return $controller->show();
 });
 
 $router->get('/account', static function (): Response {
