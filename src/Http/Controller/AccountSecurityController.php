@@ -291,6 +291,7 @@ final readonly class AccountSecurityController
                         {$passkeysHtml}
                         <p><a href="/account">Back to account</a></p>
                     </main>
+                    <script type="module" src="/assets/js/main.js"></script>
                 </body>
             </html>
             HTML;
