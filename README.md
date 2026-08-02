@@ -197,6 +197,12 @@ src/          PHP application source
 tests/        Backend and frontend tests
 ```
 
+## Architecture Choice
+
+The project uses a layered architecture (`Domain` / `Application` / `Infrastructure` / `Http`) to make security boundaries visible: what is trusted server-side, what comes from the browser, where authentication decisions live, and where persistence starts.
+
+This structure is intentionally more explicit than a typical CRUD application. The goal is pedagogical clarity for a security lab, not framework mimicry. Every layer has a single responsibility, so authentication state, MFA challenges, and credential storage remain easy to audit.
+
 ## Security Direction
 
 Security-sensitive decisions must remain server-side. Frontend code may improve user experience, but it must not decide authentication, authorization, MFA fallback eligibility, recovery state, or trusted-device policy.
