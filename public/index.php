@@ -7,6 +7,7 @@ use ModernAuthLab\Http\Controller\AccountController;
 use ModernAuthLab\Http\Controller\AccountSecurityController;
 use ModernAuthLab\Http\Controller\LogoutController;
 use ModernAuthLab\Http\Controller\PasskeyEnrollmentController;
+use ModernAuthLab\Http\Controller\PasskeyLoginController;
 use ModernAuthLab\Http\Controller\PasswordLoginController;
 use ModernAuthLab\Http\Controller\TotpChallengeController;
 use ModernAuthLab\Http\Controller\TotpSetupController;
@@ -17,6 +18,8 @@ use ModernAuthLab\Application\Totp\TotpDisableService;
 use ModernAuthLab\Application\Totp\TotpEnrollmentService;
 use ModernAuthLab\Application\Totp\TotpLoginVerificationService;
 use ModernAuthLab\Application\Totp\TotpRecoveryCodeService;
+use ModernAuthLab\Application\WebAuthn\PasskeyAuthenticationChallengeService;
+use ModernAuthLab\Application\WebAuthn\PasskeyAuthenticationVerificationService;
 use ModernAuthLab\Application\WebAuthn\PasskeyEnrollmentChallengeService;
 use ModernAuthLab\Application\WebAuthn\PasskeyEnrollmentVerificationService;
 use ModernAuthLab\Infrastructure\Persistence\DatabaseConfig;
@@ -45,6 +48,7 @@ use ModernAuthLab\Security\Totp\TotpRecoveryCodeGenerator;
 use ModernAuthLab\Security\Totp\TotpRecoveryCodeHasher;
 use ModernAuthLab\Security\Totp\TotpSecretEncryptionConfig;
 use ModernAuthLab\Security\WebAuthn\WebAuthnConfig;
+use ModernAuthLab\Security\WebAuthn\WebAuthnLibPasskeyAssertionVerifier;
 use ModernAuthLab\Security\WebAuthn\WebAuthnLibPasskeyAttestationVerifier;
 use ModernAuthLab\Session\NativeSession;
 use ModernAuthLab\Session\SessionCookieOptions;
@@ -238,6 +242,36 @@ $router->post('/account/totp/setup', static function (): Response {
     return $controller->confirm($_POST);
 });
 
+$router->get('/login/passkey', static function (): Response {
+    try {
+        $controller = createPasskeyLoginController();
+    } catch (\InvalidArgumentException) {
+        return Response::html('<p>Passkey login is not configured.</p>', 500);
+    }
+
+    return $controller->show();
+});
+
+$router->post('/login/passkey/challenge', static function (): Response {
+    try {
+        $controller = createPasskeyLoginController();
+    } catch (\InvalidArgumentException) {
+        return Response::json(['error' => 'not_configured'], 500);
+    }
+
+    return $controller->challenge();
+});
+
+$router->post('/login/passkey/verify', static function (): Response {
+    try {
+        $controller = createPasskeyLoginController();
+    } catch (\InvalidArgumentException) {
+        return Response::json(['error' => 'not_configured'], 500);
+    }
+
+    return $controller->verify(readJsonBody());
+});
+
 $router->post('/account/security/passkeys/enroll/challenge', static function (): Response {
     try {
         $controller = createPasskeyEnrollmentController();
@@ -336,6 +370,29 @@ function createTotpChallengeController(): TotpChallengeController
             $totpConfig->protector(),
         ),
         new TotpChallengeRateLimiter($_SESSION, $rateLimitConfig),
+        new SecurityEventLogger(new SecurityEventRepository($pdo)),
+        clientIp(),
+        static fn() => $nativeSession->rotateId(),
+    );
+}
+
+function createPasskeyLoginController(): PasskeyLoginController
+{
+    [$nativeSession, $authSession] = createSessionContext();
+    $pdo = createApplicationConnection();
+    $webAuthnConfig = WebAuthnConfig::fromEnvironment(getenvArray());
+    $challenges = new WebAuthnChallengeRepository($pdo);
+    $credentials = new UserPasskeyCredentialRepository($pdo);
+
+    return new PasskeyLoginController(
+        $authSession,
+        new UserRepository($pdo),
+        new PasskeyAuthenticationChallengeService($webAuthnConfig, $challenges, $credentials),
+        new PasskeyAuthenticationVerificationService(
+            $challenges,
+            $credentials,
+            new WebAuthnLibPasskeyAssertionVerifier($webAuthnConfig),
+        ),
         new SecurityEventLogger(new SecurityEventRepository($pdo)),
         clientIp(),
         static fn() => $nativeSession->rotateId(),
