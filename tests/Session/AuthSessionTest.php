@@ -6,6 +6,7 @@ namespace ModernAuthLab\Tests\Session;
 
 use ModernAuthLab\Session\AuthSession;
 use ModernAuthLab\Session\AuthSessionState;
+use ModernAuthLab\Session\PendingMfaMethod;
 use PHPUnit\Framework\TestCase;
 
 final class AuthSessionTest extends TestCase
@@ -54,6 +55,56 @@ final class AuthSessionTest extends TestCase
             'auth_user_id' => 123,
             'auth_user_email' => 'user@example.com',
         ], $storage);
+    }
+
+    public function testTracksPendingMfaMethodWhenProvided(): void
+    {
+        $storage = [];
+        $session = new AuthSession($storage);
+
+        $session->markMfaPending(123, 'user@example.com', PendingMfaMethod::Passkey);
+
+        self::assertSame(PendingMfaMethod::Passkey, $session->pendingMfaMethod());
+        self::assertSame([
+            'auth_state' => 'mfa_pending',
+            'auth_user_id' => 123,
+            'auth_user_email' => 'user@example.com',
+            'auth_pending_mfa_method' => 'passkey',
+        ], $storage);
+    }
+
+    public function testPendingMfaMethodDefaultsToNull(): void
+    {
+        $storage = [];
+        $session = new AuthSession($storage);
+
+        $session->markMfaPending(123, 'user@example.com');
+
+        self::assertNull($session->pendingMfaMethod());
+    }
+
+    public function testInvalidStoredPendingMfaMethodReturnsNull(): void
+    {
+        $storage = ['auth_pending_mfa_method' => 'unexpected'];
+        $session = new AuthSession($storage);
+
+        self::assertNull($session->pendingMfaMethod());
+    }
+
+    public function testClearAuthenticationRemovesPendingMfaMethod(): void
+    {
+        $storage = [
+            'auth_state' => 'mfa_pending',
+            'auth_user_id' => 123,
+            'auth_user_email' => 'user@example.com',
+            'auth_pending_mfa_method' => 'passkey',
+        ];
+        $session = new AuthSession($storage);
+
+        $session->clearAuthentication();
+
+        self::assertNull($session->pendingMfaMethod());
+        self::assertSame([], $storage);
     }
 
     public function testTracksFullyAuthenticatedState(): void
