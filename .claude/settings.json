@@ -3,7 +3,7 @@
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
     "allowUnsandboxedCommands": false,
-    "excludedCommands": ["git *", "gh *", "docker *", "npm *", "php *"]
+    "excludedCommands": ["git *", "gh *", "docker *", "npm *", "php *", "composer *"]
   },
   "permissions": {
     "defaultMode": "bypassPermissions"
