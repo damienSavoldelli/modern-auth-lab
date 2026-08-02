@@ -205,7 +205,7 @@ Intentionally deferred:
 
 These items are deferred because they require a global MFA policy that should account for TOTP, Passkeys, recovery codes, and trusted devices together.
 
-### `v0.8.0 - Passkey / WebAuthn Foundation` - In progress
+### `v0.8.0 - Passkey / WebAuthn Foundation`
 
 Goal: add WebAuthn enrollment and authentication primitives without replacing TOTP or introducing public signup.
 
@@ -231,7 +231,7 @@ Out of scope for `v0.8.0`:
 - Server-side authentication assertion verification.
 - Replacing TOTP.
 
-### `v0.9.0 - Password + Passkey Flow`
+### `v0.9.0 - Password + Passkey Flow` - In progress
 
 Goal: add the Password + Passkey authentication path as a preferred MFA option.
 
