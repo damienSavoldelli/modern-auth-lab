@@ -8,6 +8,7 @@ use ModernAuthLab\Application\Security\SecurityEventLogger;
 use ModernAuthLab\Application\Totp\TotpDisableService;
 use ModernAuthLab\Application\Totp\TotpLoginVerificationService;
 use ModernAuthLab\Application\Totp\TotpRecoveryCodeService;
+use ModernAuthLab\Application\WebAuthn\PasskeyRevocationService;
 use ModernAuthLab\Domain\Security\SecurityEventType;
 use ModernAuthLab\Http\Response;
 use ModernAuthLab\Infrastructure\Persistence\UserPasskeyCredential;
@@ -29,6 +30,7 @@ final readonly class AccountSecurityController
 {
     private const TOTP_DISABLE_CSRF_TOKEN_ID = 'totp_disable_form';
     private const TOTP_RECOVERY_CODES_CSRF_TOKEN_ID = 'totp_recovery_codes_form';
+    private const PASSKEY_REVOKE_CSRF_TOKEN_ID = 'passkey_revoke_form';
 
     /**
      * Receive the current auth session and credential repositories.
@@ -345,10 +347,80 @@ final readonly class AccountSecurityController
             $lastUsed = $credential->lastUsedAt === null
                 ? 'Never used'
                 : htmlspecialchars($credential->lastUsedAt, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            $items .= "<li><strong>{$name}</strong> — last used: {$lastUsed}</li>";
+            $revokeToken = htmlspecialchars(
+                $this->csrf->issue(self::PASSKEY_REVOKE_CSRF_TOKEN_ID)->value,
+                ENT_QUOTES | ENT_SUBSTITUTE,
+                'UTF-8',
+            );
+            $items .= <<<HTML
+                <li>
+                    <strong>{$name}</strong> — last used: {$lastUsed}
+                    <form method="post" action="/account/security/passkeys/revoke">
+                        <input type="hidden" name="csrf_token" value="{$revokeToken}">
+                        <input type="hidden" name="credential_id" value="{$credential->id}">
+                        <button type="submit">Revoke</button>
+                    </form>
+                </li>
+                HTML;
         }
 
         return "<ul>{$items}</ul>";
+    }
+
+    /**
+     * Revoke a Passkey credential owned by the authenticated user.
+     *
+     * @param array<string, mixed> $post Submitted form data.
+     * @param PasskeyRevocationService $revocation Passkey revocation workflow.
+     * @param SecurityEventLogger $securityEvents Audit logger for lifecycle events.
+     * @param string $clientIp Server-observed client IP.
+     *
+     * @return Response Redirect after success or generic failure response.
+     */
+    public function revokePasskey(
+        array $post,
+        PasskeyRevocationService $revocation,
+        SecurityEventLogger $securityEvents,
+        string $clientIp,
+    ): Response {
+        $redirect = $this->redirectWhenSessionCannotManageSecurity();
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
+        $userId = $this->session->userId();
+        $email = $this->session->userEmail();
+
+        if ($userId === null || $email === null) {
+            return Response::redirect('/login');
+        }
+
+        try {
+            $this->csrf->consume(self::PASSKEY_REVOKE_CSRF_TOKEN_ID, $this->stringValue($post['csrf_token'] ?? null));
+        } catch (CsrfTokenException) {
+            return Response::redirect('/account/security');
+        }
+
+        $credentialId = filter_var($post['credential_id'] ?? null, FILTER_VALIDATE_INT);
+
+        if ($credentialId === false || $credentialId <= 0) {
+            return Response::redirect('/account/security');
+        }
+
+        try {
+            $revocation->revoke($userId, $credentialId);
+        } catch (\Throwable) {
+            return Response::redirect('/account/security');
+        }
+
+        $securityEvents->record(
+            SecurityEventType::PasskeyRevoked,
+            $userId,
+            $email,
+            $clientIp,
+        );
+
+        return Response::redirect('/account/security');
     }
 
     /**

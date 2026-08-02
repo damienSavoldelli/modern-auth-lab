@@ -22,6 +22,7 @@ use ModernAuthLab\Application\WebAuthn\PasskeyAuthenticationChallengeService;
 use ModernAuthLab\Application\WebAuthn\PasskeyAuthenticationVerificationService;
 use ModernAuthLab\Application\WebAuthn\PasskeyEnrollmentChallengeService;
 use ModernAuthLab\Application\WebAuthn\PasskeyEnrollmentVerificationService;
+use ModernAuthLab\Application\WebAuthn\PasskeyRevocationService;
 use ModernAuthLab\Infrastructure\Persistence\DatabaseConfig;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRunner;
@@ -290,6 +291,18 @@ $router->post('/account/security/passkeys/enroll/verify', static function (): Re
     }
 
     return $controller->verify(readJsonBody());
+});
+
+$router->post('/account/security/passkeys/revoke', static function (): Response {
+    $controller = createAccountSecurityController();
+    $pdo = createApplicationConnection();
+
+    return $controller->revokePasskey(
+        $_POST,
+        new PasskeyRevocationService(new UserPasskeyCredentialRepository($pdo)),
+        new SecurityEventLogger(new SecurityEventRepository($pdo)),
+        clientIp(),
+    );
 });
 
 $router->post('/logout', static function (): Response {

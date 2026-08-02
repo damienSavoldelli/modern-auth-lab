@@ -8,6 +8,7 @@ use ModernAuthLab\Application\Security\SecurityEventLogger;
 use ModernAuthLab\Application\Totp\TotpDisableService;
 use ModernAuthLab\Application\Totp\TotpLoginVerificationService;
 use ModernAuthLab\Application\Totp\TotpRecoveryCodeService;
+use ModernAuthLab\Application\WebAuthn\PasskeyRevocationService;
 use ModernAuthLab\Domain\Security\SecurityEventType;
 use ModernAuthLab\Http\Controller\AccountSecurityController;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
@@ -126,6 +127,85 @@ final class AccountSecurityControllerTest extends TestCase
         self::assertStringContainsString('Never used', $response->body);
         self::assertStringNotContainsString('stored-credential-id', $response->body);
         self::assertStringNotContainsString('stored-public-key', $response->body);
+    }
+
+    public function testRevokesPasskeyWithValidCsrfAndRecordsEvent(): void
+    {
+        $storage = [];
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $session = new AuthSession($storage);
+        $session->markFullyAuthenticated($user->id, $user->email);
+        $passkeys = new UserPasskeyCredentialRepository($pdo);
+        $stored = $passkeys->createActive(
+            $user->id,
+            'stored-credential-id',
+            'stored-public-key',
+            0,
+            'Work laptop',
+        );
+        $csrf = new CsrfTokenManager($storage);
+        $events = new SecurityEventRepository($pdo);
+        $controller = new AccountSecurityController(
+            $session,
+            new UserTotpCredentialRepository($pdo),
+            $passkeys,
+            $csrf,
+        );
+        $token = $csrf->issue('passkey_revoke_form');
+
+        $response = $controller->revokePasskey(
+            [
+                'csrf_token' => $token->value,
+                'credential_id' => (string) $stored->id,
+            ],
+            new PasskeyRevocationService($passkeys),
+            new SecurityEventLogger($events),
+            '127.0.0.1',
+        );
+
+        self::assertSame(303, $response->statusCode);
+        self::assertSame(['Location' => '/account/security'], $response->headers);
+        self::assertSame([], $passkeys->findActiveByUserId($user->id));
+        self::assertSame(SecurityEventType::PasskeyRevoked->value, $events->all()[0]['type']);
+    }
+
+    public function testRejectsPasskeyRevocationWithInvalidCsrf(): void
+    {
+        $storage = [];
+        $pdo = $this->createMigratedConnection();
+        $user = (new UserRepository($pdo))->create('user@example.com', 'password-hash');
+        $session = new AuthSession($storage);
+        $session->markFullyAuthenticated($user->id, $user->email);
+        $passkeys = new UserPasskeyCredentialRepository($pdo);
+        $stored = $passkeys->createActive(
+            $user->id,
+            'stored-credential-id',
+            'stored-public-key',
+            0,
+            'Work laptop',
+        );
+        $events = new SecurityEventRepository($pdo);
+        $controller = new AccountSecurityController(
+            $session,
+            new UserTotpCredentialRepository($pdo),
+            $passkeys,
+            new CsrfTokenManager($storage),
+        );
+
+        $response = $controller->revokePasskey(
+            [
+                'csrf_token' => 'invalid',
+                'credential_id' => (string) $stored->id,
+            ],
+            new PasskeyRevocationService($passkeys),
+            new SecurityEventLogger($events),
+            '127.0.0.1',
+        );
+
+        self::assertSame(303, $response->statusCode);
+        self::assertNotEmpty($passkeys->findActiveByUserId($user->id));
+        self::assertSame([], $events->all());
     }
 
     public function testShowsActiveTotpStatusWithoutSecretMaterial(): void
