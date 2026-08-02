@@ -231,18 +231,27 @@ Out of scope for `v0.8.0`:
 - Server-side authentication assertion verification.
 - Replacing TOTP.
 
-### `v0.9.0 - Password + Passkey Flow` - In progress
+### `v0.9.0 - Password + Passkey Flow`
 
 Goal: add the Password + Passkey authentication path as a preferred MFA option.
 
-Planned scope:
+Delivered scope:
 
-- Password plus Passkey login.
-- Multiple Passkeys per user.
-- Passkey naming.
-- Individual Passkey revocation.
-- Last-used tracking.
-- Cross-device authentication support.
+- Session-tracked pending MFA method for explicit server-side routing between TOTP and Passkey.
+- HTTP-wired Passkey enrollment with account security UI and browser wiring.
+- Server-side Passkey authentication assertion verification behind a project-owned boundary.
+- Password + Passkey login flow with Passkey preferred over TOTP when both are active.
+- Multiple Passkeys per user with individual naming and last-used tracking.
+- Individual Passkey revocation with per-credential CSRF protection.
+- Passkey-specific security events for enrollment, authentication, and revocation.
+- Cross-device authentication support inherited from the WebAuthn assertion path.
+
+Out of scope for `v0.9.0`:
+
+- Controlled TOTP fallback when Passkey authentication is unavailable (deferred to `v0.10.0`).
+- Trusted devices.
+- Recovery-code use during login.
+- Mandatory MFA policy.
 
 ### `v0.10.0 - Secure Fallback Strategy`
 
