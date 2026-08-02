@@ -103,6 +103,7 @@ $router->get('/account/security', static function (): Response {
     $controller = new AccountSecurityController(
         $authSession,
         new UserTotpCredentialRepository($pdo),
+        new UserPasskeyCredentialRepository($pdo),
         new CsrfTokenManager($_SESSION),
     );
 
@@ -391,6 +392,7 @@ function createAccountSecurityController(): AccountSecurityController
     return new AccountSecurityController(
         $authSession,
         new UserTotpCredentialRepository($pdo),
+        new UserPasskeyCredentialRepository($pdo),
         new CsrfTokenManager($_SESSION),
     );
 }
