@@ -63,6 +63,12 @@ Required local variables:
 TOTP_SECRET_ENCRYPTION_KEY=
 TOTP_RATE_LIMIT_MAX_ATTEMPTS=5
 TOTP_RATE_LIMIT_LOCK_SECONDS=300
+WEBAUTHN_RP_ID=127.0.0.1
+WEBAUTHN_RP_NAME="Modern Auth Lab"
+WEBAUTHN_ALLOWED_ORIGINS=http://127.0.0.1:8080
+WEBAUTHN_CHALLENGE_TTL_SECONDS=300
+WEBAUTHN_TIMEOUT_MS=60000
+WEBAUTHN_USER_VERIFICATION=preferred
 ```
 
 `TOTP_SECRET_ENCRYPTION_KEY` must contain a Base64-encoded 32-byte key used to encrypt TOTP secrets before SQLite persistence.
@@ -77,6 +83,15 @@ The rate-limit variables control the TOTP challenge brute-force protection:
 
 - `TOTP_RATE_LIMIT_MAX_ATTEMPTS`: failed TOTP submissions before temporary lockout.
 - `TOTP_RATE_LIMIT_LOCK_SECONDS`: lockout duration in seconds.
+
+The WebAuthn variables define the local relying-party configuration used for future Passkey enrollment and verification:
+
+- `WEBAUTHN_RP_ID`: relying-party id, usually the effective host.
+- `WEBAUTHN_RP_NAME`: user-facing service name shown by authenticators.
+- `WEBAUTHN_ALLOWED_ORIGINS`: comma-separated origins accepted by server-side verification.
+- `WEBAUTHN_CHALLENGE_TTL_SECONDS`: lifetime of generated WebAuthn challenges.
+- `WEBAUTHN_TIMEOUT_MS`: browser ceremony timeout hint.
+- `WEBAUTHN_USER_VERIFICATION`: `required`, `preferred`, or `discouraged`.
 
 ## Installation
 
