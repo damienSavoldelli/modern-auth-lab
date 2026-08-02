@@ -8,8 +8,11 @@ use ModernAuthLab\Application\Security\SecurityEventLogger;
 use ModernAuthLab\Application\Totp\TotpDisableService;
 use ModernAuthLab\Application\Totp\TotpLoginVerificationService;
 use ModernAuthLab\Application\Totp\TotpRecoveryCodeService;
+use ModernAuthLab\Application\WebAuthn\PasskeyRevocationService;
 use ModernAuthLab\Domain\Security\SecurityEventType;
 use ModernAuthLab\Http\Response;
+use ModernAuthLab\Infrastructure\Persistence\UserPasskeyCredential;
+use ModernAuthLab\Infrastructure\Persistence\UserPasskeyCredentialRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredential;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenException;
@@ -27,17 +30,20 @@ final readonly class AccountSecurityController
 {
     private const TOTP_DISABLE_CSRF_TOKEN_ID = 'totp_disable_form';
     private const TOTP_RECOVERY_CODES_CSRF_TOKEN_ID = 'totp_recovery_codes_form';
+    private const PASSKEY_REVOKE_CSRF_TOKEN_ID = 'passkey_revoke_form';
 
     /**
-     * Receive the current auth session and TOTP credential repository.
+     * Receive the current auth session and credential repositories.
      *
      * @param AuthSession $session Current authentication session facade.
      * @param UserTotpCredentialRepository $totpCredentials Repository used to read TOTP lifecycle state.
+     * @param UserPasskeyCredentialRepository $passkeyCredentials Repository used to read Passkey lifecycle state.
      * @param CsrfTokenManager $csrf CSRF token manager for future security-setting mutations.
      */
     public function __construct(
         private AuthSession $session,
         private UserTotpCredentialRepository $totpCredentials,
+        private UserPasskeyCredentialRepository $passkeyCredentials,
         private CsrfTokenManager $csrf,
     ) {}
 
@@ -56,8 +62,9 @@ final readonly class AccountSecurityController
         $userId = $this->session->userId();
         \assert($userId !== null);
         $activeTotpCredential = $this->totpCredentials->findActiveByUserId($userId);
+        $activePasskeyCredentials = $this->passkeyCredentials->findActiveByUserId($userId);
 
-        return Response::html($this->renderPage($activeTotpCredential));
+        return Response::html($this->renderPage($activeTotpCredential, $activePasskeyCredentials));
     }
 
     /**
@@ -193,6 +200,7 @@ final readonly class AccountSecurityController
 
         return Response::html($this->renderPage(
             $this->totpCredentials->findActiveByUserId($userId),
+            $this->passkeyCredentials->findActiveByUserId($userId),
             recoveryCodes: $result->plainCodes,
         ));
     }
@@ -210,9 +218,14 @@ final readonly class AccountSecurityController
     {
         $userId = $this->session->userId();
         $activeTotpCredential = $userId === null ? null : $this->totpCredentials->findActiveByUserId($userId);
+        $activePasskeyCredentials = $userId === null ? [] : $this->passkeyCredentials->findActiveByUserId($userId);
 
         return Response::html(
-            $this->renderPage($activeTotpCredential, 'Unable to disable TOTP with the submitted authenticator code.'),
+            $this->renderPage(
+                $activeTotpCredential,
+                $activePasskeyCredentials,
+                'Unable to disable TOTP with the submitted authenticator code.',
+            ),
             400,
         );
     }
@@ -221,9 +234,14 @@ final readonly class AccountSecurityController
     {
         $userId = $this->session->userId();
         $activeTotpCredential = $userId === null ? null : $this->totpCredentials->findActiveByUserId($userId);
+        $activePasskeyCredentials = $userId === null ? [] : $this->passkeyCredentials->findActiveByUserId($userId);
 
         return Response::html(
-            $this->renderPage($activeTotpCredential, 'Unable to generate recovery codes with the submitted authenticator code.'),
+            $this->renderPage(
+                $activeTotpCredential,
+                $activePasskeyCredentials,
+                'Unable to generate recovery codes with the submitted authenticator code.',
+            ),
             400,
         );
     }
@@ -232,6 +250,7 @@ final readonly class AccountSecurityController
      * Render the read-only account security page.
      *
      * @param UserTotpCredential|null $activeTotpCredential Active TOTP credential when one exists.
+     * @param list<UserPasskeyCredential> $activePasskeyCredentials Active Passkey credentials for this user.
      * @param string|null $error User-facing generic lifecycle error.
      * @param list<string> $recoveryCodes Plain recovery codes for one-time display.
      *
@@ -239,6 +258,7 @@ final readonly class AccountSecurityController
      */
     private function renderPage(
         ?UserTotpCredential $activeTotpCredential,
+        array $activePasskeyCredentials,
         ?string $error = null,
         array $recoveryCodes = [],
     ): string {
@@ -250,6 +270,7 @@ final readonly class AccountSecurityController
             ? ''
             : '<p role="alert">' . htmlspecialchars($error, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>';
         $recoveryCodesHtml = $this->renderRecoveryCodes($recoveryCodes);
+        $passkeysHtml = $this->renderPasskeys($activePasskeyCredentials);
 
         return <<<HTML
             <!doctype html>
@@ -269,11 +290,137 @@ final readonly class AccountSecurityController
                             <p>Status: {$totpStatus}</p>
                             {$totpDetails}
                         </section>
+                        {$passkeysHtml}
                         <p><a href="/account">Back to account</a></p>
                     </main>
+                    <script type="module" src="/assets/js/main.js"></script>
                 </body>
             </html>
             HTML;
+    }
+
+    /**
+     * Render the Passkeys section listing enrolled credentials and the enrollment form.
+     *
+     * The credential id, public key, and sign counter must never appear here. The section
+     * only exposes user-facing metadata (name, last used timestamp) so this page remains a
+     * safe overview.
+     *
+     * @param list<UserPasskeyCredential> $credentials Active Passkey credentials.
+     *
+     * @return string HTML section fragment.
+     */
+    private function renderPasskeys(array $credentials): string
+    {
+        $listHtml = $credentials === []
+            ? '<p>No Passkey is currently registered for this account.</p>'
+            : $this->renderPasskeysList($credentials);
+
+        return <<<HTML
+            <section aria-labelledby="passkeys">
+                <h2 id="passkeys">Passkeys</h2>
+                {$listHtml}
+                <form id="passkey-enrollment-form">
+                    <label>
+                        Passkey name
+                        <input type="text" name="name" id="passkey-name" maxlength="80" required>
+                    </label>
+                    <button type="submit" id="passkey-enrollment-submit">Add Passkey</button>
+                </form>
+            </section>
+            HTML;
+    }
+
+    /**
+     * Render the list of currently enrolled Passkeys.
+     *
+     * @param list<UserPasskeyCredential> $credentials Active Passkey credentials.
+     *
+     * @return string HTML list fragment.
+     */
+    private function renderPasskeysList(array $credentials): string
+    {
+        $items = '';
+
+        foreach ($credentials as $credential) {
+            $name = htmlspecialchars($credential->name, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $lastUsed = $credential->lastUsedAt === null
+                ? 'Never used'
+                : htmlspecialchars($credential->lastUsedAt, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $revokeToken = htmlspecialchars(
+                $this->csrf->issue(self::PASSKEY_REVOKE_CSRF_TOKEN_ID)->value,
+                ENT_QUOTES | ENT_SUBSTITUTE,
+                'UTF-8',
+            );
+            $items .= <<<HTML
+                <li>
+                    <strong>{$name}</strong> — last used: {$lastUsed}
+                    <form method="post" action="/account/security/passkeys/revoke">
+                        <input type="hidden" name="csrf_token" value="{$revokeToken}">
+                        <input type="hidden" name="credential_id" value="{$credential->id}">
+                        <button type="submit">Revoke</button>
+                    </form>
+                </li>
+                HTML;
+        }
+
+        return "<ul>{$items}</ul>";
+    }
+
+    /**
+     * Revoke a Passkey credential owned by the authenticated user.
+     *
+     * @param array<string, mixed> $post Submitted form data.
+     * @param PasskeyRevocationService $revocation Passkey revocation workflow.
+     * @param SecurityEventLogger $securityEvents Audit logger for lifecycle events.
+     * @param string $clientIp Server-observed client IP.
+     *
+     * @return Response Redirect after success or generic failure response.
+     */
+    public function revokePasskey(
+        array $post,
+        PasskeyRevocationService $revocation,
+        SecurityEventLogger $securityEvents,
+        string $clientIp,
+    ): Response {
+        $redirect = $this->redirectWhenSessionCannotManageSecurity();
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
+        $userId = $this->session->userId();
+        $email = $this->session->userEmail();
+
+        if ($userId === null || $email === null) {
+            return Response::redirect('/login');
+        }
+
+        try {
+            $this->csrf->consume(self::PASSKEY_REVOKE_CSRF_TOKEN_ID, $this->stringValue($post['csrf_token'] ?? null));
+        } catch (CsrfTokenException) {
+            return Response::redirect('/account/security');
+        }
+
+        $credentialId = filter_var($post['credential_id'] ?? null, FILTER_VALIDATE_INT);
+
+        if ($credentialId === false || $credentialId <= 0) {
+            return Response::redirect('/account/security');
+        }
+
+        try {
+            $revocation->revoke($userId, $credentialId);
+        } catch (\Throwable) {
+            return Response::redirect('/account/security');
+        }
+
+        $securityEvents->record(
+            SecurityEventType::PasskeyRevoked,
+            $userId,
+            $email,
+            $clientIp,
+        );
+
+        return Response::redirect('/account/security');
     }
 
     /**

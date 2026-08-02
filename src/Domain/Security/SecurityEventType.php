@@ -23,4 +23,9 @@ enum SecurityEventType: string
     case TotpRecoveryCodesGenerationFailed = 'totp_recovery_codes_generation_failed';
     case LogoutSucceeded = 'logout_succeeded';
     case LogoutCsrfFailed = 'logout_csrf_failed';
+    case PasskeyEnrollmentSucceeded = 'passkey_enrollment_succeeded';
+    case PasskeyEnrollmentFailed = 'passkey_enrollment_failed';
+    case PasskeyAuthenticationSucceeded = 'passkey_authentication_succeeded';
+    case PasskeyAuthenticationFailed = 'passkey_authentication_failed';
+    case PasskeyRevoked = 'passkey_revoked';
 }

@@ -11,9 +11,11 @@ use ModernAuthLab\Http\Controller\PasswordLoginController;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRunner;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateSecurityEventsTable;
+use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUserPasskeyCredentialsTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUsersTable;
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUserTotpCredentialsTable;
 use ModernAuthLab\Infrastructure\Persistence\SecurityEventRepository;
+use ModernAuthLab\Infrastructure\Persistence\UserPasskeyCredentialRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
@@ -21,6 +23,7 @@ use ModernAuthLab\Security\Password\PasswordHasher;
 use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
 use ModernAuthLab\Session\AuthSession;
 use ModernAuthLab\Session\AuthSessionState;
+use ModernAuthLab\Session\PendingMfaMethod;
 use PDO;
 use PHPUnit\Framework\TestCase;
 
@@ -89,6 +92,50 @@ final class PasswordLoginControllerTest extends TestCase
         self::assertSame('user@example.com', $session->userEmail());
         self::assertTrue($rotated);
         self::assertSame(SecurityEventType::PasswordLoginSucceeded->value, $this->events->all()[0]['type']);
+    }
+
+    public function testMarksMfaPendingAndRedirectsToPasskeyWhenUserHasActivePasskey(): void
+    {
+        $storage = [];
+        $rotated = false;
+        $controller = $this->createController($storage, static function () use (&$rotated): void {
+            $rotated = true;
+        }, hasActivePasskey: true);
+        $token = (new CsrfTokenManager($storage))->issue('login_form');
+
+        $response = $controller->submit([
+            'csrf_token' => $token->value,
+            'email' => 'user@example.com',
+            'password' => 'correct password',
+        ]);
+
+        self::assertSame(303, $response->statusCode);
+        self::assertSame(['Location' => '/login/passkey'], $response->headers);
+        $session = new AuthSession($storage);
+        self::assertSame(AuthSessionState::MfaPending, $session->state());
+        self::assertSame(PendingMfaMethod::Passkey, $session->pendingMfaMethod());
+        self::assertTrue($rotated);
+    }
+
+    public function testPrefersPasskeyOverTotpWhenBothAreActive(): void
+    {
+        $storage = [];
+        $controller = $this->createController(
+            $storage,
+            null,
+            hasActiveTotp: true,
+            hasActivePasskey: true,
+        );
+        $token = (new CsrfTokenManager($storage))->issue('login_form');
+
+        $response = $controller->submit([
+            'csrf_token' => $token->value,
+            'email' => 'user@example.com',
+            'password' => 'correct password',
+        ]);
+
+        self::assertSame(['Location' => '/login/passkey'], $response->headers);
+        self::assertSame(PendingMfaMethod::Passkey, (new AuthSession($storage))->pendingMfaMethod());
     }
 
     public function testRejectsInvalidPasswordWithoutChangingSessionState(): void
@@ -166,12 +213,14 @@ final class PasswordLoginControllerTest extends TestCase
         array &$storage,
         ?\Closure $rotateSessionId = null,
         bool $hasActiveTotp = false,
+        bool $hasActivePasskey = false,
     ): PasswordLoginController {
         $passwords = new PasswordHasher();
         $pdo = $this->createMigratedConnection();
         $users = new UserRepository($pdo);
         $user = $users->create('user@example.com', $passwords->hash('correct password'));
         $totpCredentials = new UserTotpCredentialRepository($pdo);
+        $passkeyCredentials = new UserPasskeyCredentialRepository($pdo);
         $this->events = new SecurityEventRepository($pdo);
 
         if ($hasActiveTotp) {
@@ -187,11 +236,22 @@ final class PasswordLoginControllerTest extends TestCase
             $totpCredentials->confirm($pending->id);
         }
 
+        if ($hasActivePasskey) {
+            $passkeyCredentials->createActive(
+                $user->id,
+                'stored-credential-id',
+                'stored-public-key',
+                0,
+                'Work laptop',
+            );
+        }
+
         return new PasswordLoginController(
             new CsrfTokenManager($storage),
             new PasswordAuthenticator($users, $passwords),
             new AuthSession($storage),
             $totpCredentials,
+            $passkeyCredentials,
             new LoginRateLimiter($storage),
             new SecurityEventLogger($this->events),
             '127.0.0.1',
@@ -209,6 +269,7 @@ final class PasswordLoginControllerTest extends TestCase
             new CreateUsersTable(),
             new CreateSecurityEventsTable(),
             new CreateUserTotpCredentialsTable(),
+            new CreateUserPasskeyCredentialsTable(),
         ]);
         $runner->run();
 

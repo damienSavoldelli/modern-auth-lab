@@ -15,6 +15,7 @@ final class AuthSession
     private const AUTH_STATE_KEY = 'auth_state';
     private const AUTH_USER_EMAIL_KEY = 'auth_user_email';
     private const AUTH_USER_ID_KEY = 'auth_user_id';
+    private const AUTH_PENDING_MFA_METHOD_KEY = 'auth_pending_mfa_method';
 
     /**
      * @param array<string, mixed> $storage Session-backed auth storage.
@@ -56,15 +57,44 @@ final class AuthSession
      * so the second-factor controller can load the correct credential without
      * asking for the account identifier again.
      *
+     * The optional pending method records which MFA factor the server chose for
+     * this login attempt. Challenge controllers must reject sessions whose
+     * pending method does not match their own factor to keep method selection
+     * a server-side decision.
+     *
      * @param int|null $userId Verified user id to carry into the MFA challenge.
      * @param string|null $email Verified user email to carry into the MFA challenge.
+     * @param PendingMfaMethod|null $pendingMethod MFA method the server expects to verify.
      *
      * @return void
      */
-    public function markMfaPending(?int $userId = null, ?string $email = null): void
-    {
+    public function markMfaPending(
+        ?int $userId = null,
+        ?string $email = null,
+        ?PendingMfaMethod $pendingMethod = null,
+    ): void {
         $this->storage[self::AUTH_STATE_KEY] = AuthSessionState::MfaPending->value;
         $this->storeUserIdentity($userId, $email);
+
+        if ($pendingMethod !== null) {
+            $this->storage[self::AUTH_PENDING_MFA_METHOD_KEY] = $pendingMethod->value;
+        }
+    }
+
+    /**
+     * Return the MFA method the current session is waiting to verify.
+     *
+     * @return PendingMfaMethod|null Pending MFA method or null when unset.
+     */
+    public function pendingMfaMethod(): ?PendingMfaMethod
+    {
+        $value = $this->storage[self::AUTH_PENDING_MFA_METHOD_KEY] ?? null;
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        return PendingMfaMethod::tryFrom($value);
     }
 
     /**
@@ -113,6 +143,7 @@ final class AuthSession
             $this->storage[self::AUTH_STATE_KEY],
             $this->storage[self::AUTH_USER_ID_KEY],
             $this->storage[self::AUTH_USER_EMAIL_KEY],
+            $this->storage[self::AUTH_PENDING_MFA_METHOD_KEY],
         );
     }
 

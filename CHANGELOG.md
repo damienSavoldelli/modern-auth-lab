@@ -4,6 +4,44 @@ All notable changes to Modern Auth Lab will be documented in this file.
 
 The format follows Keep a Changelog conventions, and this project uses semantic versioning for project milestones.
 
+## [0.9.0] - 2026-08-02
+
+### Added
+
+- Added session-tracked pending MFA method (`PendingMfaMethod`) so the server explicitly routes between TOTP and Passkey flows.
+- Added HTTP Passkey enrollment endpoints (`POST /account/security/passkeys/enroll/challenge`, `POST /account/security/passkeys/enroll/verify`).
+- Added the `passkey-enrollment-ui` browser module that fetches the challenge, delegates to the WebAuthn ceremony, and posts the response.
+- Added the Passkey section on `/account/security` listing enrolled Passkeys with name and last-used metadata.
+- Added the `PasskeyAssertionVerifier` contract and `WebAuthnLibPasskeyAssertionVerifier` adapter.
+- Added `PasskeyAuthenticationVerificationService` orchestrating challenge lookup, credential ownership, assertion verification, sign-counter update, and challenge consumption.
+- Added the `passkey-authentication` and `passkey-login-ui` browser modules for the `navigator.credentials.get()` ceremony.
+- Added `PasskeyLoginController` exposing `GET /login/passkey`, `POST /login/passkey/challenge`, and `POST /login/passkey/verify` guarded by the pending MFA method.
+- Added `PasskeyRevocationService` and CSRF-protected `POST /account/security/passkeys/revoke` for individual credential revocation.
+- Added `PasskeyEnrollmentSucceeded`, `PasskeyEnrollmentFailed`, `PasskeyAuthenticationSucceeded`, `PasskeyAuthenticationFailed`, and `PasskeyRevoked` security event types.
+- Added the v0.9 implementation notes and updated the README `Current Status` and `Documentation` sections.
+
+### Changed
+
+- Updated `PasswordLoginController` to prefer Passkey over TOTP when both are active, marking the session `MfaPending` with the corresponding method.
+- Updated `AccountSecurityController` to inject the Passkey credential repository and render the Passkey section and revoke forms.
+- Updated `UserRepository::findById` to be a public nullable lookup used by controllers to resolve the current session user.
+
+### Verified
+
+- `composer test`
+- `composer analyse`
+- `composer cs:check`
+- `npm test`
+- `npm run lint`
+- `npm run format`
+
+### Not Included Yet
+
+- Controlled TOTP fallback when Passkey authentication is unavailable (deferred to `v0.10.0`).
+- Trusted devices.
+- Recovery-code use during login.
+- Mandatory MFA policy.
+
 ## [0.8.0] - 2026-08-02
 
 ### Added

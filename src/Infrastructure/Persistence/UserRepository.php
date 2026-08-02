@@ -44,7 +44,13 @@ final readonly class UserRepository
             'password_hash' => $passwordHash,
         ]);
 
-        return $this->findById((int) $this->pdo->lastInsertId());
+        $created = $this->findById((int) $this->pdo->lastInsertId());
+
+        if ($created === null) {
+            throw new \RuntimeException('User was not found after creation.');
+        }
+
+        return $created;
     }
 
     /**
@@ -69,7 +75,14 @@ final readonly class UserRepository
         return $this->mapRowToUser($row);
     }
 
-    private function findById(int $id): User
+    /**
+     * Find a user by id or return null when no matching account exists.
+     *
+     * @param int $id User identifier.
+     *
+     * @return User|null Matching user or null.
+     */
+    public function findById(int $id): ?User
     {
         $statement = $this->pdo->prepare(
             'SELECT id, email, password_hash, created_at, updated_at FROM users WHERE id = :id',
@@ -78,7 +91,7 @@ final readonly class UserRepository
         $row = $statement->fetch();
 
         if (! is_array($row)) {
-            throw new \RuntimeException(sprintf('User "%d" was not found after creation.', $id));
+            return null;
         }
 
         return $this->mapRowToUser($row);

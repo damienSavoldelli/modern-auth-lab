@@ -40,12 +40,17 @@ Implemented foundation:
 - Passkey enrollment and authentication challenge generation.
 - Passkey enrollment browser module.
 - Server-side Passkey enrollment attestation verification boundary.
+- Session-tracked pending MFA method for explicit server-side routing between TOTP and Passkey.
+- HTTP-wired Passkey enrollment: challenge endpoint, verification endpoint, account security UI, and browser wiring.
+- Server-side Passkey authentication assertion verification behind a project-owned boundary.
+- Password + Passkey login flow with Passkey preferred over TOTP when both are active.
+- Individual Passkey revocation with per-credential CSRF protection.
+- Passkey-specific security events for enrollment, authentication, and revocation.
 
 Not implemented yet:
 
 - CSRF middleware.
-- Complete Password + Passkey login.
-- Browser-wired manual Passkey enrollment UI.
+- Controlled TOTP fallback when Passkey authentication is unavailable.
 - Trusted devices.
 - Login recovery with recovery-code submission.
 - User-facing SQLite/libSQL persistence features.
@@ -197,6 +202,12 @@ src/          PHP application source
 tests/        Backend and frontend tests
 ```
 
+## Architecture Choice
+
+The project uses a layered architecture (`Domain` / `Application` / `Infrastructure` / `Http`) to make security boundaries visible: what is trusted server-side, what comes from the browser, where authentication decisions live, and where persistence starts.
+
+This structure is intentionally more explicit than a typical CRUD application. The goal is pedagogical clarity for a security lab, not framework mimicry. Every layer has a single responsibility, so authentication state, MFA challenges, and credential storage remain easy to audit.
+
 ## Security Direction
 
 Security-sensitive decisions must remain server-side. Frontend code may improve user experience, but it must not decide authentication, authorization, MFA fallback eligibility, recovery state, or trusted-device policy.
@@ -219,6 +230,7 @@ Start with:
 - [v0.6.0 Password + TOTP flow implementation notes](docs/implementation-notes/v0.6-password-totp-flow.md)
 - [v0.7.0 TOTP lifecycle and recovery implementation notes](docs/implementation-notes/v0.7-totp-lifecycle-recovery.md)
 - [v0.8.0 Passkey / WebAuthn foundation implementation notes](docs/implementation-notes/v0.8-passkey-webauthn-foundation.md)
+- [v0.9.0 Password + Passkey flow implementation notes](docs/implementation-notes/v0.9-password-passkey-flow.md)
 - [Decision records](docs/decisions/README.md)
 
 ## Versioning

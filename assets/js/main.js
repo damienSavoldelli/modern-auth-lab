@@ -1,3 +1,6 @@
+import { initPasskeyEnrollmentUi } from './webauthn/passkey-enrollment-ui.js';
+import { initPasskeyLoginUi } from './webauthn/passkey-login-ui.js';
+
 export function createAppTitle(projectName) {
   return `${projectName} Backend and Frontend Tooling`;
 }
@@ -22,4 +25,9 @@ const root =
 
 if (root !== null) {
   renderApp(root);
+}
+
+if (typeof document !== 'undefined') {
+  initPasskeyEnrollmentUi(document);
+  initPasskeyLoginUi(document);
 }

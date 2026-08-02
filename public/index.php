@@ -6,6 +6,8 @@ use ModernAuthLab\Http\Response;
 use ModernAuthLab\Http\Controller\AccountController;
 use ModernAuthLab\Http\Controller\AccountSecurityController;
 use ModernAuthLab\Http\Controller\LogoutController;
+use ModernAuthLab\Http\Controller\PasskeyEnrollmentController;
+use ModernAuthLab\Http\Controller\PasskeyLoginController;
 use ModernAuthLab\Http\Controller\PasswordLoginController;
 use ModernAuthLab\Http\Controller\TotpChallengeController;
 use ModernAuthLab\Http\Controller\TotpSetupController;
@@ -16,6 +18,11 @@ use ModernAuthLab\Application\Totp\TotpDisableService;
 use ModernAuthLab\Application\Totp\TotpEnrollmentService;
 use ModernAuthLab\Application\Totp\TotpLoginVerificationService;
 use ModernAuthLab\Application\Totp\TotpRecoveryCodeService;
+use ModernAuthLab\Application\WebAuthn\PasskeyAuthenticationChallengeService;
+use ModernAuthLab\Application\WebAuthn\PasskeyAuthenticationVerificationService;
+use ModernAuthLab\Application\WebAuthn\PasskeyEnrollmentChallengeService;
+use ModernAuthLab\Application\WebAuthn\PasskeyEnrollmentVerificationService;
+use ModernAuthLab\Application\WebAuthn\PasskeyRevocationService;
 use ModernAuthLab\Infrastructure\Persistence\DatabaseConfig;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRepository;
 use ModernAuthLab\Infrastructure\Persistence\MigrationRunner;
@@ -27,9 +34,11 @@ use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateWebAuthnChallenges
 use ModernAuthLab\Infrastructure\Persistence\Migrations\CreateUsersTable;
 use ModernAuthLab\Infrastructure\Persistence\SecurityEventRepository;
 use ModernAuthLab\Infrastructure\Persistence\SqliteConnectionFactory;
+use ModernAuthLab\Infrastructure\Persistence\UserPasskeyCredentialRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpRecoveryCodeRepository;
+use ModernAuthLab\Infrastructure\Persistence\WebAuthnChallengeRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\Password\PasswordHasher;
 use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
@@ -39,6 +48,9 @@ use ModernAuthLab\Security\Totp\TotpRateLimitConfig;
 use ModernAuthLab\Security\Totp\TotpRecoveryCodeGenerator;
 use ModernAuthLab\Security\Totp\TotpRecoveryCodeHasher;
 use ModernAuthLab\Security\Totp\TotpSecretEncryptionConfig;
+use ModernAuthLab\Security\WebAuthn\WebAuthnConfig;
+use ModernAuthLab\Security\WebAuthn\WebAuthnLibPasskeyAssertionVerifier;
+use ModernAuthLab\Security\WebAuthn\WebAuthnLibPasskeyAttestationVerifier;
 use ModernAuthLab\Session\NativeSession;
 use ModernAuthLab\Session\SessionCookieOptions;
 use ModernAuthLab\Support\EnvLoader;
@@ -96,6 +108,7 @@ $router->get('/account/security', static function (): Response {
     $controller = new AccountSecurityController(
         $authSession,
         new UserTotpCredentialRepository($pdo),
+        new UserPasskeyCredentialRepository($pdo),
         new CsrfTokenManager($_SESSION),
     );
 
@@ -230,6 +243,68 @@ $router->post('/account/totp/setup', static function (): Response {
     return $controller->confirm($_POST);
 });
 
+$router->get('/login/passkey', static function (): Response {
+    try {
+        $controller = createPasskeyLoginController();
+    } catch (\InvalidArgumentException) {
+        return Response::html('<p>Passkey login is not configured.</p>', 500);
+    }
+
+    return $controller->show();
+});
+
+$router->post('/login/passkey/challenge', static function (): Response {
+    try {
+        $controller = createPasskeyLoginController();
+    } catch (\InvalidArgumentException) {
+        return Response::json(['error' => 'not_configured'], 500);
+    }
+
+    return $controller->challenge();
+});
+
+$router->post('/login/passkey/verify', static function (): Response {
+    try {
+        $controller = createPasskeyLoginController();
+    } catch (\InvalidArgumentException) {
+        return Response::json(['error' => 'not_configured'], 500);
+    }
+
+    return $controller->verify(readJsonBody());
+});
+
+$router->post('/account/security/passkeys/enroll/challenge', static function (): Response {
+    try {
+        $controller = createPasskeyEnrollmentController();
+    } catch (\InvalidArgumentException) {
+        return Response::json(['error' => 'not_configured'], 500);
+    }
+
+    return $controller->challenge();
+});
+
+$router->post('/account/security/passkeys/enroll/verify', static function (): Response {
+    try {
+        $controller = createPasskeyEnrollmentController();
+    } catch (\InvalidArgumentException) {
+        return Response::json(['error' => 'not_configured'], 500);
+    }
+
+    return $controller->verify(readJsonBody());
+});
+
+$router->post('/account/security/passkeys/revoke', static function (): Response {
+    $controller = createAccountSecurityController();
+    $pdo = createApplicationConnection();
+
+    return $controller->revokePasskey(
+        $_POST,
+        new PasskeyRevocationService(new UserPasskeyCredentialRepository($pdo)),
+        new SecurityEventLogger(new SecurityEventRepository($pdo)),
+        clientIp(),
+    );
+});
+
 $router->post('/logout', static function (): Response {
     [$nativeSession, $authSession] = createSessionContext();
     $pdo = createApplicationConnection();
@@ -267,6 +342,7 @@ function createPasswordLoginController(): PasswordLoginController
         ),
         $authSession,
         new UserTotpCredentialRepository($pdo),
+        new UserPasskeyCredentialRepository($pdo),
         new LoginRateLimiter($_SESSION),
         new SecurityEventLogger(new SecurityEventRepository($pdo)),
         clientIp(),
@@ -313,6 +389,72 @@ function createTotpChallengeController(): TotpChallengeController
     );
 }
 
+function createPasskeyLoginController(): PasskeyLoginController
+{
+    [$nativeSession, $authSession] = createSessionContext();
+    $pdo = createApplicationConnection();
+    $webAuthnConfig = WebAuthnConfig::fromEnvironment(getenvArray());
+    $challenges = new WebAuthnChallengeRepository($pdo);
+    $credentials = new UserPasskeyCredentialRepository($pdo);
+
+    return new PasskeyLoginController(
+        $authSession,
+        new UserRepository($pdo),
+        new PasskeyAuthenticationChallengeService($webAuthnConfig, $challenges, $credentials),
+        new PasskeyAuthenticationVerificationService(
+            $challenges,
+            $credentials,
+            new WebAuthnLibPasskeyAssertionVerifier($webAuthnConfig),
+        ),
+        new SecurityEventLogger(new SecurityEventRepository($pdo)),
+        clientIp(),
+        static fn() => $nativeSession->rotateId(),
+    );
+}
+
+function createPasskeyEnrollmentController(): PasskeyEnrollmentController
+{
+    [, $authSession] = createSessionContext();
+    $pdo = createApplicationConnection();
+    $webAuthnConfig = WebAuthnConfig::fromEnvironment(getenvArray());
+    $challenges = new WebAuthnChallengeRepository($pdo);
+    $credentials = new UserPasskeyCredentialRepository($pdo);
+
+    return new PasskeyEnrollmentController(
+        $authSession,
+        new UserRepository($pdo),
+        new PasskeyEnrollmentChallengeService($webAuthnConfig, $challenges, $credentials),
+        new PasskeyEnrollmentVerificationService(
+            $challenges,
+            $credentials,
+            new WebAuthnLibPasskeyAttestationVerifier($webAuthnConfig),
+        ),
+        new SecurityEventLogger(new SecurityEventRepository($pdo)),
+        clientIp(),
+    );
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function readJsonBody(): array
+{
+    $raw = file_get_contents('php://input');
+
+    if (! is_string($raw) || $raw === '') {
+        return [];
+    }
+
+    try {
+        /** @var array<string, mixed> $decoded */
+        $decoded = json_decode($raw, true, flags: JSON_THROW_ON_ERROR);
+
+        return is_array($decoded) ? $decoded : [];
+    } catch (\JsonException) {
+        return [];
+    }
+}
+
 function createAccountSecurityController(): AccountSecurityController
 {
     [, $authSession] = createSessionContext();
@@ -321,6 +463,7 @@ function createAccountSecurityController(): AccountSecurityController
     return new AccountSecurityController(
         $authSession,
         new UserTotpCredentialRepository($pdo),
+        new UserPasskeyCredentialRepository($pdo),
         new CsrfTokenManager($_SESSION),
     );
 }
