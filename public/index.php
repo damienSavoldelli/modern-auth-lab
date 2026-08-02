@@ -295,6 +295,7 @@ function createPasswordLoginController(): PasswordLoginController
         ),
         $authSession,
         new UserTotpCredentialRepository($pdo),
+        new UserPasskeyCredentialRepository($pdo),
         new LoginRateLimiter($_SESSION),
         new SecurityEventLogger(new SecurityEventRepository($pdo)),
         clientIp(),

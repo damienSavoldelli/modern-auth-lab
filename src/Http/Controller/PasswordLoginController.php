@@ -9,11 +9,13 @@ use ModernAuthLab\Application\Auth\PasswordAuthenticator;
 use ModernAuthLab\Application\Security\SecurityEventLogger;
 use ModernAuthLab\Domain\Security\SecurityEventType;
 use ModernAuthLab\Http\Response;
+use ModernAuthLab\Infrastructure\Persistence\UserPasskeyCredentialRepository;
 use ModernAuthLab\Infrastructure\Persistence\UserTotpCredentialRepository;
 use ModernAuthLab\Security\Csrf\CsrfTokenException;
 use ModernAuthLab\Security\Csrf\CsrfTokenManager;
 use ModernAuthLab\Security\RateLimit\LoginRateLimiter;
 use ModernAuthLab\Session\AuthSession;
+use ModernAuthLab\Session\PendingMfaMethod;
 
 /**
  * Handles the password login form and current pre-MFA full-session transition.
@@ -31,6 +33,7 @@ final readonly class PasswordLoginController
      * @param PasswordAuthenticator $authenticator Password verification service.
      * @param AuthSession $session Current authentication session facade.
      * @param UserTotpCredentialRepository $totpCredentials TOTP credential lookup boundary.
+     * @param UserPasskeyCredentialRepository $passkeyCredentials Passkey credential lookup boundary.
      * @param LoginRateLimiter $rateLimiter Initial login throttling control.
      * @param SecurityEventLogger $securityEvents Audit logger for login events.
      * @param string $clientIp Server-observed client IP.
@@ -41,6 +44,7 @@ final readonly class PasswordLoginController
         private PasswordAuthenticator $authenticator,
         private AuthSession $session,
         private UserTotpCredentialRepository $totpCredentials,
+        private UserPasskeyCredentialRepository $passkeyCredentials,
         private LoginRateLimiter $rateLimiter,
         private SecurityEventLogger $securityEvents,
         private string $clientIp,
@@ -118,8 +122,15 @@ final readonly class PasswordLoginController
             throw new \LogicException('Successful password authentication must return a user.');
         }
 
+        if ($this->passkeyCredentials->findActiveByUserId($user->id) !== []) {
+            $this->session->markMfaPending($user->id, $user->email, PendingMfaMethod::Passkey);
+            ($this->rotateSessionId)();
+
+            return Response::redirect('/login/passkey');
+        }
+
         if ($this->totpCredentials->findActiveByUserId($user->id) !== null) {
-            $this->session->markMfaPending($user->id, $user->email);
+            $this->session->markMfaPending($user->id, $user->email, PendingMfaMethod::Totp);
             ($this->rotateSessionId)();
 
             return Response::redirect('/login/totp');
