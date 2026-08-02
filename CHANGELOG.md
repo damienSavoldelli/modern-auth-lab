@@ -4,6 +4,44 @@ All notable changes to Modern Auth Lab will be documented in this file.
 
 The format follows Keep a Changelog conventions, and this project uses semantic versioning for project milestones.
 
+## [0.8.0] - 2026-08-02
+
+### Added
+
+- Added WebAuthn dependency boundary with `web-auth/webauthn-lib`.
+- Added WebAuthn terminology and v0.8 implementation notes.
+- Added Passkey credential persistence with support for multiple credentials per user.
+- Added temporary WebAuthn challenge persistence.
+- Added Passkey enrollment challenge generation.
+- Added Passkey enrollment browser module for Base64URL/`ArrayBuffer` conversion and `navigator.credentials.create()` orchestration.
+- Added server-side Passkey enrollment attestation verification boundary.
+- Added Passkey authentication challenge primitive for future `navigator.credentials.get()` login work.
+- Added WebAuthn local configuration in `.env.example` and README.
+
+### Changed
+
+- Updated roadmap to clarify that v0.8 introduces primitives without replacing TOTP or adding public signup.
+- Updated README current status with Passkey/WebAuthn foundation progress.
+
+### Verified
+
+- `composer test`
+- `composer analyse`
+- `composer cs:check`
+- `npm run build`
+- `npm test`
+- `npm run lint`
+
+### Not Included Yet
+
+- Public signup.
+- Passwordless account creation.
+- Manual browser-wired Passkey enrollment UI.
+- Complete Password + Passkey login.
+- Server-side authentication assertion verification.
+- TOTP fallback decision for Passkey users.
+- Trusted devices.
+
 ## [0.7.0] - 2026-08-01
 
 ### Added
