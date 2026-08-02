@@ -35,11 +35,17 @@ Implemented foundation:
 - Account security page for TOTP lifecycle status.
 - Normal TOTP disable with current authenticator code.
 - TOTP recovery-code generation, hash-only storage, one-time display, and service-level verification.
+- Passkey/WebAuthn foundation primitives.
+- Passkey credential persistence.
+- Passkey enrollment and authentication challenge generation.
+- Passkey enrollment browser module.
+- Server-side Passkey enrollment attestation verification boundary.
 
 Not implemented yet:
 
 - CSRF middleware.
-- Passkeys/WebAuthn.
+- Complete Password + Passkey login.
+- Browser-wired manual Passkey enrollment UI.
 - Trusted devices.
 - Login recovery with recovery-code submission.
 - User-facing SQLite/libSQL persistence features.
@@ -84,7 +90,7 @@ The rate-limit variables control the TOTP challenge brute-force protection:
 - `TOTP_RATE_LIMIT_MAX_ATTEMPTS`: failed TOTP submissions before temporary lockout.
 - `TOTP_RATE_LIMIT_LOCK_SECONDS`: lockout duration in seconds.
 
-The WebAuthn variables define the local relying-party configuration used for future Passkey enrollment and verification:
+The WebAuthn variables define the local relying-party configuration used for Passkey enrollment and verification primitives:
 
 - `WEBAUTHN_RP_ID`: relying-party id, usually the effective host.
 - `WEBAUTHN_RP_NAME`: user-facing service name shown by authenticators.

@@ -209,7 +209,7 @@ These items are deferred because they require a global MFA policy that should ac
 
 Goal: add WebAuthn enrollment and authentication primitives without replacing TOTP or introducing public signup.
 
-Planned scope:
+Delivered scope:
 
 - Passkey enrollment for existing fully authenticated users.
 - Enrollment challenge generation.
@@ -219,12 +219,16 @@ Planned scope:
 - Signature counter handling when available.
 - Backend tests and focused frontend WebAuthn modules.
 - Documentation for browser/device Passkey capability constraints.
+- WebAuthn dependency boundary behind project-owned services.
+- Browser Base64URL and `ArrayBuffer` conversion helpers.
 
 Out of scope for `v0.8.0`:
 
 - Public signup.
 - Passwordless account creation.
 - Complete Password + Passkey login.
+- Manual browser enrollment UI.
+- Server-side authentication assertion verification.
 - Replacing TOTP.
 
 ### `v0.9.0 - Password + Passkey Flow`
